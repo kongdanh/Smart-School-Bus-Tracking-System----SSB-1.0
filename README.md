@@ -1,2 +1,1 @@
-# QuanLyPhongChoThue
-Đồ án môn Công nghệ phần mềm
+# môn học Công nghệ phần mềm
