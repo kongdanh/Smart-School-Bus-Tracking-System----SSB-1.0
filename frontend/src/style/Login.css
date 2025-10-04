@@ -1,0 +1,128 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  /* luôn full chiều cao màn hình */
+  width: 100vw;
+  /* luôn full chiều rộng màn hình */
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  padding: 20px;
+  /* thêm padding tránh dính sát mép khi màn nhỏ */
+  box-sizing: border-box;
+}
+
+.login-card {
+  background: white;
+  padding: 40px 35px;
+  border-radius: 15px;
+  box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.25);
+
+  width: 100%;
+  /* chiếm toàn bộ width khả dụng */
+  max-width: 420px;
+  /* giới hạn tối đa cho đẹp trên desktop */
+  text-align: center;
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+
+.login-header h1 {
+  font-size: 22px;
+  margin: 15px 0 5px;
+  color: #1e293b;
+}
+
+.login-header p {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.login-logo {
+  width: 70px;
+  height: 70px;
+}
+
+.login-form {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  font-size: 14px;
+  color: #334155;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.4);
+}
+
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 5px;
+  transition: all 0.3s;
+}
+
+.login-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  transform: translateY(-2px);
+  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+.login-footer {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.login-footer a {
+  font-size: 13px;
+  color: #2563eb;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.login-footer a:hover {
+  color: #1e40af;
+  text-decoration: underline;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
