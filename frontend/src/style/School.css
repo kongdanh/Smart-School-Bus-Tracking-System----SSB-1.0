@@ -1,0 +1,123 @@
+/* Toàn bộ nền */
+.school-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    /* Chiều cao toàn màn hình */
+    width: 100vw;
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    color: #f1f5f9;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    padding: 20px;
+}
+
+/* Header */
+.school-header {
+    text-align: center;
+    animation: fadeInDown 0.8s ease-in-out;
+}
+
+.school-header h1 {
+    font-size: 28px;
+    margin-bottom: 5px;
+}
+
+.school-header p {
+    font-size: 16px;
+    color: #e0e7ff;
+}
+
+/* Nội dung chính */
+.school-main {
+    flex: 1;
+    /* Chiếm hết không gian trống giữa header và footer */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.school-card {
+    background: white;
+    color: #1e293b;
+    border-radius: 15px;
+    box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.25);
+    padding: 40px 50px;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+.school-card h2 {
+    margin-bottom: 20px;
+    color: #1d4ed8;
+}
+
+.school-card ul {
+    list-style: none;
+    padding: 0;
+}
+
+.school-card li {
+    font-size: 16px;
+    margin: 10px 0;
+}
+
+/* Footer — luôn ở cuối */
+.school-footer {
+    text-align: center;
+    font-size: 14px;
+    color: #cbd5e1;
+    margin-top: auto;
+    /* Đẩy footer xuống cuối */
+    padding: 10px 0;
+}
+
+/* Nút đăng xuất */
+.logout-btn {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.logout-btn:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+}
+
+/* Hiệu ứng mượt */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0px);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
