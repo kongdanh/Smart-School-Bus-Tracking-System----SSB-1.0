@@ -1,5 +1,15 @@
 {
-  "dependencies": {
-    "react-router-dom": "^7.9.3"
+  "name": "smart-school-bus-project",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:frontend\" \"npm:dev:backend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
