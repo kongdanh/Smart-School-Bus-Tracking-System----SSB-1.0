@@ -5,6 +5,7 @@ import "../style/ParentMap.css";
 import busIconImg from "../assets/bus.svg";
 import schoolIconImg from "../assets/school.svg";
 import homeIconImg from "../assets/house.svg";
+import L from "leaflet";
 
 
 export default function ParentMap() {

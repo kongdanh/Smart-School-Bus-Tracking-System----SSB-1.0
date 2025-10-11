@@ -27,12 +27,12 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
             <label>Email</label>
-            <input type="email" placeholder="Nhập email..." required defaultValue={"a@123"}/>
+            <input type="email" placeholder="Nhập email..." required defaultValue={"a@123"} />
           </div>
 
           <div className="form-group">
             <label>Mật khẩu</label>
-            <input type="password" placeholder="Nhập mật khẩu..." required defaultValue={"123"}/>
+            <input type="password" placeholder="Nhập mật khẩu..." required defaultValue={"123"} />
           </div>
 
           <div className="form-group">
@@ -50,7 +50,6 @@ export default function Login() {
 
           <div className="login-footer">
             <a href="#">Quên mật khẩu?</a>
-            <a href="#">Đăng ký</a>
           </div>
         </form>
       </div>
