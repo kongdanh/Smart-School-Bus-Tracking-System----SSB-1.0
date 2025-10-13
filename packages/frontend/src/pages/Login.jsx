@@ -8,7 +8,11 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    navigate(`/${role}`);
+    if (role === 'school') {
+      navigate('/school/dashboard');
+    } else {
+      navigate(`/${role}`);
+    }
   };
 
   return (
