@@ -1,68 +1,104 @@
-import React, { useState, useEffect } from "react"; // Thêm useEffect
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../style/Driver.css";
 
+// Lấy API URL từ biến môi trường
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function Driver() {
   const navigate = useNavigate();
 
-  // State để lưu thông tin tuyến đường lấy từ API
-  const [currentRoute, setCurrentRoute] = useState("Đang tải tuyến đường...");
+  // State để lưu lịch trình và các trạng thái khác
+  const [schedules, setSchedules] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // useEffect sẽ chạy một lần sau khi component được render
   useEffect(() => {
-    // Định nghĩa một hàm async để gọi API
-    const fetchCurrentRoute = async () => {
+    const fetchSchedule = async () => {
       try {
-        // Gọi đến một API mới tên là /api/route/current
-        const response = await fetch(`${API_URL}/api/testapi`);
+        const response = await fetch(`${API_URL}/api/driver/schedule`);
+
         if (!response.ok) {
-          throw new Error("Lỗi mạng hoặc server");
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Không thể tải lịch trình");
         }
+
         const data = await response.json();
+        setSchedules(data);
 
-        // Cập nhật state với tên tuyến đường từ API
-        setCurrentRoute(data.message);
-
-      } catch (error) {
-        console.error("Không thể lấy thông tin tuyến đường:", error);
-        setCurrentRoute("Không thể tải tuyến đường");
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Gọi hàm vừa định nghĩa
-    fetchCurrentRoute();
+    fetchSchedule();
   }, []); // Mảng rỗng [] đảm bảo useEffect chỉ chạy 1 lần
 
   const handleLogout = () => {
     navigate("/");
   };
 
+  const handleIncidentReport = () => {
+    const incident = prompt("Vui lòng mô tả sự cố:");
+    if (incident) {
+      console.log("Đã gửi cảnh báo sự cố:", incident);
+      alert("Đã gửi cảnh báo thành công!");
+    }
+  };
+
+  // Hàm render nội dung lịch trình dựa trên trạng thái
+  const renderScheduleContent = () => {
+    if (isLoading) {
+      return <p>Đang tải lịch trình...</p>;
+    }
+    if (error) {
+      return <p style={{ color: 'red' }}>Lỗi: {error}</p>;
+    }
+    if (schedules.length === 0) {
+      return <p>Bạn không có lịch trình nào cho hôm nay.</p>;
+    }
+    return (
+      <ul className="schedule-list">
+        {schedules.map((schedule) => (
+          <li key={schedule.id}>
+            <strong>Tuyến: {schedule.tuyenDuong?.tenTuyen || 'N/A'}</strong>
+            <p>Giờ khởi hành: {schedule.gioKhoiHanh}</p>
+            <p>Xe bus: {schedule.xeBuyt?.bienSo || 'N/A'}</p>
+            <p>Trạng thái: {schedule.trangThai}</p>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   return (
     <div className="driver-container">
       <header className="driver-header">
-        <h1>🚌 Smart School Bus Tracking</h1>
-        <p>Trang dành cho <strong>Tài Xế</strong></p>
+        <h1>🚌 Bảng điều khiển tài xế</h1>
         <button className="logout-btn" onClick={handleLogout}>Đăng xuất</button>
       </header>
 
       <main className="driver-main">
         <div className="driver-card">
-          <h2>🚦 Bảng điều khiển tài xế</h2>
-          <ul>
-            {/* Hiển thị thông tin tuyến đường từ state */}
-            <li>📍 Xem tuyến đường hiện tại: <strong>{currentRoute}</strong></li>
-            <li>👧 Danh sách học sinh trên xe</li>
-            <li>✅ Xác nhận điểm đón và trả</li>
-          </ul>
-          <button className="driver-btn">Bắt đầu chuyến đi</button>
+          <h2>📅 Lịch làm việc hôm nay</h2>
+          {renderScheduleContent()}
+        </div>
+
+        <div className="driver-card">
+          <h2>👧 Danh sách học sinh</h2>
+          <p>Chức năng sẽ được cập nhật...</p>
+        </div>
+
+        <div className="driver-card actions-card">
+          <h2>🚦 Chức năng</h2>
+          <button className="driver-btn action-btn">Bắt đầu chuyến đi</button>
+          <button className="driver-btn incident-btn" onClick={handleIncidentReport}>
+            🚨 Gửi cảnh báo sự cố
+          </button>
         </div>
       </main>
-
-      <footer className="driver-footer">
-        <p>© 2025 Smart School Bus Tracking System</p>
-      </footer>
     </div>
   );
 }

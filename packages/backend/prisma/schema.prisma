@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  userId       Int           @id @default(autoincrement())
+  userCode     String        @unique
+  hoTen        String?
+  soDienThoai  String?
+  email        String?
+  quanlyxebuyt quanlyxebuyt?
+  phuhuynh     phuhuynh?
+  taixe        taixe?
+}
+
+model quanlyxebuyt {
+  quanLyId Int  @id @default(autoincrement())
+  userId   Int  @unique
+  user     user @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+model taixe {
+  taiXeId   Int         @id @default(autoincrement())
+  userId    Int?        @unique
+  hoTen     String
+  trangThai String?
+  user      user?       @relation(fields: [userId], references: [userId])
+  lichtrinh lichtrinh[]
+}
+
+model phuhuynh {
+  phuHuynhId Int        @id @default(autoincrement())
+  userId     Int        @unique
+  user       user       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  hocsinh    hocsinh[]
+  thongbao   thongbao[]
+}
+
+model hocsinh {
+  hocSinhId  Int       @id @default(autoincrement())
+  maHS       String    @unique
+  hoTen      String?
+  lop        String?
+  diemDon    String?
+  diemTra    String?
+  phuHuynhId Int?
+  phuhuynh   phuhuynh? @relation(fields: [phuHuynhId], references: [phuHuynhId], onDelete: SetNull)
+}
+
+model xebuyt {
+  xeBuytId  Int         @id @default(autoincrement())
+  maXe      String      @unique
+  bienSo    String?
+  sucChua   Int?
+  trangThai String?
+  vitri     vitri[]
+  lichtrinh lichtrinh[]
+}
+
+model vitri {
+  viTriId  Int       @id @default(autoincrement())
+  xeBuytId Int
+  vido     Float?
+  kinhdo   Float?
+  thoiGian DateTime?
+  xebuyt   xebuyt    @relation(fields: [xeBuytId], references: [xeBuytId], onDelete: Cascade)
+}
+
+model diemdung {
+  diemDungId          Int                   @id @default(autoincrement())
+  tenDiemDung         String
+  diaChi              String?
+  tuyenduong_diemdung tuyenduong_diemdung[]
+}
+
+model tuyenduong {
+  tuyenDuongId        Int                   @id @default(autoincrement())
+  maTuyen             String                @unique
+  tenTuyen            String?
+  lichtrinh           lichtrinh[]
+  tuyenduong_diemdung tuyenduong_diemdung[]
+}
+
+model tuyenduong_diemdung {
+  tuyenDuongId Int
+  diemDungId   Int
+  thuTu        Int
+  tuyenduong   tuyenduong @relation(fields: [tuyenDuongId], references: [tuyenDuongId], onDelete: Cascade)
+  diemdung     diemdung   @relation(fields: [diemDungId], references: [diemDungId], onDelete: Cascade)
+
+  @@id([tuyenDuongId, diemDungId])
+}
+
+model lichtrinh {
+  lichTrinhId  Int         @id @default(autoincrement())
+  maLich       String      @unique
+  ngay         DateTime?   @db.Date
+  gioKhoiHanh  DateTime?   @db.Time(0)
+  gioKetThuc   DateTime?   @db.Time(0)
+  tuyenDuongId Int?
+  taiXeId      Int?
+  xeBuytId     Int?
+  tuyenduong   tuyenduong? @relation(fields: [tuyenDuongId], references: [tuyenDuongId])
+  xebuyt       xebuyt?     @relation(fields: [xeBuytId], references: [xeBuytId])
+  taixe        taixe?      @relation(fields: [taiXeId], references: [taiXeId])
+}
+
+model thongbao {
+  thongBaoId  Int       @id @default(autoincrement())
+  phuHuynhId  Int?
+  noiDung     String?
+  loai        String?
+  thoiGianGui DateTime?
+  phuhuynh    phuhuynh? @relation(fields: [phuHuynhId], references: [phuHuynhId], onDelete: Cascade)
+}
