@@ -1,0 +1,475 @@
+.school-routes-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  min-height: 80px;
+}
+
+.header-left .logo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.logo-text h1 {
+  font-size: 1.5rem;
+  color: #2563eb;
+  margin: 0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.logo-text p {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-shrink: 0;
+}
+
+.school-info {
+  position: relative;
+  text-align: right;
+  min-width: 140px;
+  margin-right: 1rem;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.school-name {
+  display: block;
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.school-subtitle {
+  display: block;
+  font-size: 0.8rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.logout-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  z-index: 5;
+}
+
+.logout-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.dashboard-nav {
+  display: flex;
+  background: #4f46e5;
+  padding: 0 2rem;
+  overflow-x: auto;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.nav-item {
+  background: none;
+  border: none;
+  color: white;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+  position: relative;
+  min-width: fit-content;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.15);
+  border-bottom-color: #fbbf24;
+}
+
+.nav-item.notification {
+  position: relative;
+}
+
+.nav-item .badge {
+  background: #ef4444;
+  color: white;
+  border-radius: 10px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}
+
+.routes-main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.routes-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: white;
+}
+
+.routes-header h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.routes-header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.routes-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.routes-list {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.routes-list h3 {
+  color: #1e293b;
+  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+}
+
+.route-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.route-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 12px;
+  border-left: 4px solid;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.route-item.active {
+  background: #f0fdf4;
+  border-left-color: #22c55e;
+}
+
+.route-item.stopped {
+  background: #fffbeb;
+  border-left-color: #f59e0b;
+}
+
+.route-item.selected {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.route-item:hover {
+  transform: translateX(5px);
+}
+
+.route-item.selected:hover {
+  transform: translateY(-2px) translateX(5px);
+}
+
+.route-info h4 {
+  margin: 0 0 0.25rem 0;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.route-info p {
+  margin: 0 0 0.5rem 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.stops-count {
+  font-size: 0.85rem;
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.route-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.route-status.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.route-status.stopped {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.route-map {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.route-map h3 {
+  color: #1e293b;
+  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+}
+
+.map-container {
+  height: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+}
+
+.map-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #64748b;
+}
+
+.map-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+
+.map-placeholder p {
+  margin: 0.25rem 0;
+  font-size: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .routes-main {
+    padding: 1.5rem;
+  }
+  
+  .routes-content {
+    gap: 1.5rem;
+  }
+  
+  .dashboard-header {
+    padding: 1rem 1.5rem;
+  }
+  
+  .school-info {
+    min-width: 120px;
+    margin-right: 0.5rem;
+  }
+  
+  .school-name {
+    max-width: 120px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem;
+    min-height: auto;
+  }
+  
+  .header-left {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .header-right {
+    flex-shrink: 0;
+    gap: 1rem;
+  }
+  
+  .school-info {
+    min-width: 100px;
+    margin-right: 0;
+  }
+  
+  .school-name {
+    max-width: 100px;
+    font-size: 0.85rem;
+  }
+  
+  .school-subtitle {
+    font-size: 0.75rem;
+  }
+  
+  .logout-btn {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+
+  .dashboard-nav {
+    padding: 0 1rem;
+    justify-content: flex-start;
+  }
+  
+  .nav-item {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .routes-main {
+    padding: 1rem;
+  }
+  
+  .routes-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .routes-content {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .routes-list,
+  .route-map {
+    padding: 1rem;
+  }
+  
+  .map-container {
+    height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-header {
+    padding: 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .header-left,
+  .header-right {
+    width: 100%;
+  }
+  
+  .header-right {
+    justify-content: space-between;
+    margin-top: 0.5rem;
+  }
+  
+  .logo-text h1 {
+    font-size: 1.2rem;
+  }
+  
+  .logo-text p {
+    font-size: 0.8rem;
+  }
+  
+  .school-info {
+    min-width: auto;
+    flex: 1;
+  }
+  
+  .school-name {
+    max-width: none;
+  }
+  
+  .dashboard-nav {
+    padding: 0 0.5rem;
+  }
+  
+  .nav-item {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+  
+  .routes-main {
+    padding: 0.75rem;
+  }
+  
+  .route-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .map-container {
+    height: 250px;
+  }
+  
+  .map-icon {
+    font-size: 2rem;
+  }
+}
