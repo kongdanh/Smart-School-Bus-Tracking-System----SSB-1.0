@@ -49,7 +49,7 @@ export default function SchoolTracking() {
       try {
         setLoading(true);
         setError(null);
-        
+
         const routeConfigs = [
           {
             id: "A1",
@@ -66,7 +66,7 @@ export default function SchoolTracking() {
           },
           {
             id: "B2",
-            name: "Tuyến B2", 
+            name: "Tuyến B2",
             description: "Khu vực Tây - Trung tâm",
             color: "#f59e0b",
             busId: "29B-67890",
@@ -81,7 +81,7 @@ export default function SchoolTracking() {
           {
             id: "C3",
             name: "Tuyến C3",
-            description: "Khu vực Nam - Trung tâm", 
+            description: "Khu vực Nam - Trung tâm",
             color: "#3b82f6",
             busId: "29B-11111",
             driver: "Trần Văn Cường",
@@ -104,19 +104,19 @@ export default function SchoolTracking() {
             const res = await fetch(
               `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`
             );
-            
+
             if (!res.ok) {
               throw new Error(`HTTP error! status: ${res.status}`);
             }
-            
+
             const data = await res.json();
-            
+
             if (data.routes && data.routes.length > 0) {
               const route = data.routes[0];
               const currentCoordIndex = Math.floor(Math.random() * config.coordinates.length);
               const currentCoord = config.coordinates[currentCoordIndex];
               const status = Math.random() > 0.3 ? "moving" : "stopped";
-              
+
               return {
                 busId: config.busId,
                 route: config.id,
@@ -141,7 +141,7 @@ export default function SchoolTracking() {
             console.error(`Lỗi khi tải tracking cho ${config.name}:`, err);
             const currentCoord = config.coordinates[0];
             const status = Math.random() > 0.5 ? "moving" : "stopped";
-            
+
             return {
               busId: config.busId,
               route: config.id,
@@ -168,7 +168,7 @@ export default function SchoolTracking() {
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu tracking:", err);
         setError("Không thể tải dữ liệu tracking từ OSRM API. Vui lòng thử lại sau.");
-        
+
         const fallbackTracking = [
           {
             busId: "29B-12345",
@@ -198,8 +198,16 @@ export default function SchoolTracking() {
   }, []);
 
   const handleLogout = () => {
+    // Xóa token đăng nhập
+    localStorage.removeItem("token");
+
+    // (Tuỳ chọn) Xóa thêm thông tin người dùng nếu bạn có lưu
+    // localStorage.removeItem("user");
+
+    // Chuyển về trang login
     navigate("/");
   };
+
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -269,11 +277,11 @@ export default function SchoolTracking() {
           <h2>📍 Theo dõi xe buýt</h2>
           <p>Vị trí thời gian thực của các xe buýt trường học (Powered by OSRM API)</p>
           {error && (
-            <div className="error-message" style={{ 
-              color: '#dc2626', 
-              backgroundColor: '#fee2e2', 
-              padding: '10px', 
-              borderRadius: '4px', 
+            <div className="error-message" style={{
+              color: '#dc2626',
+              backgroundColor: '#fee2e2',
+              padding: '10px',
+              borderRadius: '4px',
               margin: '10px 0',
               border: '1px solid #fecaca'
             }}>
@@ -286,10 +294,10 @@ export default function SchoolTracking() {
           <div className="tracking-map" style={{ flex: '2' }}>
             <h3>🗺️ Bản đồ theo dõi</h3>
             <div className="map-container" style={{ height: '500px', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
-              <MapContainer 
-                center={[10.762622, 106.660172]} 
-                zoom={13} 
-                scrollWheelZoom 
+              <MapContainer
+                center={[10.762622, 106.660172]}
+                zoom={13}
+                scrollWheelZoom
                 style={{ height: "100%", width: "100%" }}
               >
                 <TileLayer
@@ -298,7 +306,7 @@ export default function SchoolTracking() {
                 />
 
                 {trackingData.map((bus) => (
-                  <Marker 
+                  <Marker
                     key={bus.busId}
                     position={bus.coordinates}
                     icon={createBusIcon(bus.status, bus.heading)}
@@ -322,7 +330,7 @@ export default function SchoolTracking() {
                           <strong>Học sinh:</strong> <span style={{ color: '#7c3aed' }}>{bus.students} em</span>
                         </div>
                         <div style={{ marginBottom: '6px' }}>
-                          <strong>Trạng thái:</strong> 
+                          <strong>Trạng thái:</strong>
                           <span style={{ color: bus.status === 'moving' ? '#166534' : '#92400e' }}>
                             {bus.status === 'moving' ? '🟢' : '🟡'} {bus.statusText}
                           </span>
@@ -343,29 +351,29 @@ export default function SchoolTracking() {
                 ))}
               </MapContainer>
             </div>
-            <div className="map-legend" style={{ 
-              marginTop: '10px', 
-              display: 'flex', 
-              gap: '20px', 
+            <div className="map-legend" style={{
+              marginTop: '10px',
+              display: 'flex',
+              gap: '20px',
               padding: '10px',
               backgroundColor: '#f8fafc',
               borderRadius: '8px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ 
-                  width: '12px', 
-                  height: '12px', 
-                  borderRadius: '50%', 
+                <span style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
                   backgroundColor: '#22c55e',
                   display: 'inline-block'
                 }}></span>
                 <span>Đang di chuyển</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ 
-                  width: '12px', 
-                  height: '12px', 
-                  borderRadius: '50%', 
+                <span style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
                   backgroundColor: '#f59e0b',
                   display: 'inline-block'
                 }}></span>
@@ -376,14 +384,14 @@ export default function SchoolTracking() {
 
           <div className="tracking-list" style={{ flex: '1', maxWidth: '350px' }}>
             <h3>🚌 Danh sách xe buýt</h3>
-            <div className="bus-tracking-items" style={{ 
-              maxHeight: '500px', 
+            <div className="bus-tracking-items" style={{
+              maxHeight: '500px',
               overflowY: 'auto',
               paddingRight: '10px'
             }}>
               {trackingData.map((bus) => (
-                <div 
-                  key={bus.busId} 
+                <div
+                  key={bus.busId}
                   className={`tracking-item ${bus.status} ${selectedBus === bus.busId ? 'selected' : ''}`}
                   style={{
                     padding: '15px',
@@ -396,9 +404,9 @@ export default function SchoolTracking() {
                   }}
                   onClick={() => handleTrackBus(bus.busId)}
                 >
-                  <div className="tracking-header-item" style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+                  <div className="tracking-header-item" style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: '10px'
                   }}>
@@ -413,7 +421,7 @@ export default function SchoolTracking() {
                       {bus.status === 'moving' ? '🟢' : '🟡'} {bus.statusText}
                     </span>
                   </div>
-                  
+
                   <div className="tracking-details" style={{ fontSize: '14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                       <span style={{ color: '#64748b' }}>Tuyến:</span>
@@ -457,7 +465,7 @@ export default function SchoolTracking() {
                     )}
                   </div>
 
-                  <button 
+                  <button
                     className="track-btn"
                     style={{
                       marginTop: '10px',

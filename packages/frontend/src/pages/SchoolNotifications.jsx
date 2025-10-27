@@ -4,7 +4,7 @@ import "../style/SchoolNotifications.css";
 
 export default function SchoolNotifications() {
   const navigate = useNavigate();
-  
+
   const [notifications] = useState([
     {
       id: 1,
@@ -56,8 +56,16 @@ export default function SchoolNotifications() {
   const [filter, setFilter] = useState("all");
 
   const handleLogout = () => {
+    // Xóa token đăng nhập
+    localStorage.removeItem("token");
+
+    // (Tuỳ chọn) Xóa thêm thông tin người dùng nếu bạn có lưu
+    // localStorage.removeItem("user");
+
+    // Chuyển về trang login
     navigate("/");
   };
+
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -130,19 +138,19 @@ export default function SchoolNotifications() {
 
         <div className="notifications-content">
           <div className="notifications-filters">
-            <button 
+            <button
               className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
               onClick={() => setFilter('all')}
             >
               Tất cả ({notifications.length})
             </button>
-            <button 
+            <button
               className={`filter-btn ${filter === 'unread' ? 'active' : ''}`}
               onClick={() => setFilter('unread')}
             >
               Chưa đọc ({unreadCount})
             </button>
-            <button 
+            <button
               className={`filter-btn ${filter === 'read' ? 'active' : ''}`}
               onClick={() => setFilter('read')}
             >
@@ -152,8 +160,8 @@ export default function SchoolNotifications() {
 
           <div className="notifications-list">
             {filteredNotifications.map((notification) => (
-              <div 
-                key={notification.id} 
+              <div
+                key={notification.id}
                 className={`notification-item ${notification.type} ${notification.read ? 'read' : 'unread'} priority-${notification.priority}`}
               >
                 <div className="notification-icon">
@@ -162,7 +170,7 @@ export default function SchoolNotifications() {
                   {notification.type === 'info' && 'ℹ️'}
                   {notification.type === 'success' && '✅'}
                 </div>
-                
+
                 <div className="notification-content">
                   <div className="notification-header">
                     <h4 className="notification-title">{notification.title}</h4>
@@ -180,7 +188,7 @@ export default function SchoolNotifications() {
 
                 <div className="notification-actions">
                   {!notification.read && (
-                    <button 
+                    <button
                       className="action-btn mark-read"
                       onClick={() => handleMarkAsRead(notification.id)}
                       title="Đánh dấu đã đọc"
@@ -188,7 +196,7 @@ export default function SchoolNotifications() {
                       ✓
                     </button>
                   )}
-                  <button 
+                  <button
                     className="action-btn delete"
                     onClick={() => handleDeleteNotification(notification.id)}
                     title="Xóa thông báo"

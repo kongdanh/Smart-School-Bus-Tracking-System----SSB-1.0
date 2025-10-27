@@ -8,7 +8,7 @@ export default function SchoolStudents() {
   const [searchTerm, setSearchTerm] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [routeFilter, setRouteFilter] = useState("");
-  
+
   const [students] = useState([
     {
       id: "HS001",
@@ -21,7 +21,7 @@ export default function SchoolStudents() {
       statusColor: "success"
     },
     {
-      id: "HS002", 
+      id: "HS002",
       name: "Lê Thị Bình",
       avatar: "LT",
       class: "10A2",
@@ -32,7 +32,7 @@ export default function SchoolStudents() {
     },
     {
       id: "HS003",
-      name: "Trần Văn Cường", 
+      name: "Trần Văn Cường",
       avatar: "TC",
       class: "11B1",
       busNumber: "29B-11111",
@@ -49,8 +49,16 @@ export default function SchoolStudents() {
   });
 
   const handleLogout = () => {
+    // Xóa token đăng nhập
+    localStorage.removeItem("token");
+
+    // (Tuỳ chọn) Xóa thêm thông tin người dùng nếu bạn có lưu
+    // localStorage.removeItem("user");
+
+    // Chuyển về trang login
     navigate("/");
   };
+
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -124,8 +132,8 @@ export default function SchoolStudents() {
             />
           </div>
           <div className="filter-controls">
-            <select 
-              value={classFilter} 
+            <select
+              value={classFilter}
               onChange={(e) => setClassFilter(e.target.value)}
               className="filter-select"
             >
@@ -134,8 +142,8 @@ export default function SchoolStudents() {
               <option value="10A2">10A2</option>
               <option value="11B1">11B1</option>
             </select>
-            <select 
-              value={routeFilter} 
+            <select
+              value={routeFilter}
               onChange={(e) => setRouteFilter(e.target.value)}
               className="filter-select"
             >

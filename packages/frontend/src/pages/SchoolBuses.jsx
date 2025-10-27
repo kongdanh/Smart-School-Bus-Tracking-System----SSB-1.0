@@ -4,7 +4,7 @@ import "../style/SchoolBuses.css";
 
 export default function SchoolBuses() {
   const navigate = useNavigate();
-  
+
   const [buses] = useState([
     {
       id: "29B-12345",
@@ -36,8 +36,16 @@ export default function SchoolBuses() {
   ]);
 
   const handleLogout = () => {
+    // Xóa token đăng nhập
+    localStorage.removeItem("token");
+
+    // (Tuỳ chọn) Xóa thêm thông tin người dùng nếu bạn có lưu
+    // localStorage.removeItem("user");
+
+    // Chuyển về trang login
     navigate("/");
   };
+
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -109,7 +117,7 @@ export default function SchoolBuses() {
                   {bus.status === 'active' ? '● Hoạt động' : '● Tạm dừng'}
                 </span>
               </div>
-              
+
               <div className="bus-info">
                 <div className="info-row">
                   <span className="label">Tuyến đường:</span>
@@ -132,13 +140,13 @@ export default function SchoolBuses() {
               </div>
 
               <div className="bus-actions">
-                <button 
+                <button
                   className="btn-primary"
                   onClick={() => handleViewDetails(bus.id)}
                 >
                   📍 Vị trí
                 </button>
-                <button 
+                <button
                   className="btn-secondary"
                   onClick={() => handleEditBus(bus.id)}
                 >

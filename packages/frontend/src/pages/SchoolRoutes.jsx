@@ -35,7 +35,7 @@ export default function SchoolRoutes() {
     const fetchRoutesData = async () => {
       try {
         setLoading(true);
-        
+
         const routeConfigs = [
           {
             id: "A1",
@@ -50,7 +50,7 @@ export default function SchoolRoutes() {
           },
           {
             id: "B2",
-            name: "Tuyến B2", 
+            name: "Tuyến B2",
             description: "Khu vực Tây - Trung tâm",
             color: "#f59e0b",
             coordinates: [
@@ -63,7 +63,7 @@ export default function SchoolRoutes() {
           {
             id: "C3",
             name: "Tuyến C3",
-            description: "Khu vực Nam - Trung tâm", 
+            description: "Khu vực Nam - Trung tâm",
             color: "#3b82f6",
             coordinates: [
               [10.762622, 106.660172], // Trường học
@@ -85,17 +85,17 @@ export default function SchoolRoutes() {
             const res = await fetch(
               `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`
             );
-            
+
             if (!res.ok) {
               throw new Error(`HTTP error! status: ${res.status}`);
             }
-            
+
             const data = await res.json();
-            
+
             if (data.routes && data.routes.length > 0) {
               const route = data.routes[0];
               const routeCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-              
+
               return {
                 ...config,
                 stops: config.coordinates.length,
@@ -130,7 +130,7 @@ export default function SchoolRoutes() {
       } catch (err) {
         console.error("Lỗi khi tải tuyến đường:", err);
         setError("Không thể tải dữ liệu tuyến đường. Vui lòng thử lại sau.");
-        
+
         // Fallback routes nếu API lỗi
         const fallbackRoutes = [
           {
@@ -157,8 +157,16 @@ export default function SchoolRoutes() {
   }, []);
 
   const handleLogout = () => {
+    // Xóa token đăng nhập
+    localStorage.removeItem("token");
+
+    // (Tuỳ chọn) Xóa thêm thông tin người dùng nếu bạn có lưu
+    // localStorage.removeItem("user");
+
+    // Chuyển về trang login
     navigate("/");
   };
+
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -235,8 +243,8 @@ export default function SchoolRoutes() {
             <h3>📋 Danh sách tuyến</h3>
             <div className="route-items">
               {routes.map((route) => (
-                <div 
-                  key={route.id} 
+                <div
+                  key={route.id}
                   className={`route-item ${route.status} ${selectedRoute?.id === route.id ? 'selected' : ''}`}
                   onClick={() => handleRouteSelect(route)}
                   style={{
@@ -259,10 +267,10 @@ export default function SchoolRoutes() {
                       </div>
                     )}
                   </div>
-                  <div className={`route-status ${route.status}`} style={{ 
-                    marginTop: '10px', 
-                    padding: '2px 8px', 
-                    borderRadius: '12px', 
+                  <div className={`route-status ${route.status}`} style={{
+                    marginTop: '10px',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
                     fontSize: '12px',
                     backgroundColor: route.status === 'active' ? '#dcfce7' : route.status === 'stopped' ? '#fef3c7' : '#fee2e2',
                     color: route.status === 'active' ? '#166534' : route.status === 'stopped' ? '#92400e' : '#991b1b'
@@ -277,10 +285,10 @@ export default function SchoolRoutes() {
           <div className="route-map" style={{ flex: '2' }}>
             <h3>🗺️ Bản đồ tuyến đường</h3>
             <div className="map-container" style={{ height: '500px', border: '1px solid #ddd', borderRadius: '8px' }}>
-              <MapContainer 
-                center={[10.762622, 106.660172]} 
-                zoom={12} 
-                scrollWheelZoom 
+              <MapContainer
+                center={[10.762622, 106.660172]}
+                zoom={12}
+                scrollWheelZoom
                 style={{ height: "100%", width: "100%" }}
               >
                 <TileLayer
@@ -292,21 +300,21 @@ export default function SchoolRoutes() {
                   <React.Fragment key={route.id}>
                     {/* Vẽ tuyến đường */}
                     {route.routeCoordinates && route.routeCoordinates.length > 0 && (
-                      <Polyline 
-                        positions={route.routeCoordinates} 
-                        pathOptions={{ 
-                          color: selectedRoute?.id === route.id ? route.color : '#cccccc', 
+                      <Polyline
+                        positions={route.routeCoordinates}
+                        pathOptions={{
+                          color: selectedRoute?.id === route.id ? route.color : '#cccccc',
                           weight: selectedRoute?.id === route.id ? 6 : 3,
                           opacity: selectedRoute?.id === route.id ? 1 : 0.6
-                        }} 
+                        }}
                       />
                     )}
 
                     {/* Vẽ các điểm dừng */}
                     {route.stopCoordinates && route.stopCoordinates.map((coord, stopIndex) => (
-                      <Marker 
+                      <Marker
                         key={`${route.id}-stop-${stopIndex}`}
-                        position={coord} 
+                        position={coord}
                         icon={createIcon(route.color, stopIndex + 1)}
                       >
                         <Popup>

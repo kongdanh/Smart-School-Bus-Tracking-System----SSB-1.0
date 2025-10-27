@@ -38,8 +38,16 @@ export default function SchoolDashboard() {
   ]);
 
   const handleLogout = () => {
+    // Xóa JWT token khỏi localStorage
+    localStorage.removeItem("token");
+
+    // (Tùy chọn) Xóa thêm các thông tin khác nếu bạn có lưu, ví dụ:
+    // localStorage.removeItem("user");
+
+    // Chuyển hướng về trang đăng nhập
     navigate("/");
   };
+
 
   const handleNavigation = (path) => {
     navigate(path);

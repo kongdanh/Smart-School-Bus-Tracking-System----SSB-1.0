@@ -7,7 +7,7 @@ export default function SchoolDrivers() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  
+
   const [drivers] = useState([
     {
       id: "TX001",
@@ -23,7 +23,7 @@ export default function SchoolDrivers() {
     {
       id: "TX002",
       name: "Trần Thị Lan",
-      avatar: "TL", 
+      avatar: "TL",
       phone: "0912345678",
       busNumber: "29B-67890",
       route: "Tuyến B2",
@@ -35,7 +35,7 @@ export default function SchoolDrivers() {
       id: "TX003",
       name: "Lê Văn Hùng",
       avatar: "LH",
-      phone: "0923456789", 
+      phone: "0923456789",
       busNumber: "29B-11111",
       route: "Tuyến C3",
       status: "Sẵn sàng",
@@ -45,8 +45,16 @@ export default function SchoolDrivers() {
   ]);
 
   const handleLogout = () => {
+    // Xóa token đăng nhập
+    localStorage.removeItem("token");
+
+    // (Tuỳ chọn) Xóa thêm thông tin người dùng nếu bạn có lưu
+    // localStorage.removeItem("user");
+
+    // Chuyển về trang login
     navigate("/");
   };
+
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -119,8 +127,8 @@ export default function SchoolDrivers() {
             />
           </div>
           <div className="filter-controls">
-            <select 
-              value={statusFilter} 
+            <select
+              value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="filter-select"
             >

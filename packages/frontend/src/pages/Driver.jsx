@@ -37,8 +37,16 @@ export default function Driver() {
   }, []); // Mảng rỗng [] đảm bảo useEffect chỉ chạy 1 lần
 
   const handleLogout = () => {
+    // Xóa JWT token khỏi localStorage
+    localStorage.removeItem("token");
+
+    // (Tùy chọn) Xóa thêm các thông tin khác nếu bạn có lưu, ví dụ:
+    // localStorage.removeItem("user");
+
+    // Chuyển hướng về trang đăng nhập
     navigate("/");
   };
+
 
   const handleIncidentReport = () => {
     const incident = prompt("Vui lòng mô tả sự cố:");
