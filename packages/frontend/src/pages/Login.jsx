@@ -129,29 +129,6 @@ export default function Login() {
             </a>
           </div>
         </form>
-
-        <div className="login-info">
-          <div className="info-title">
-            💡 <strong>Hệ thống tự động phân quyền</strong>
-          </div>
-          <div className="info-content">
-            <div className="info-item">
-              <span className="info-code">QL***</span>
-              <span className="info-arrow">→</span>
-              <span className="info-role">Quản lý xe buýt</span>
-            </div>
-            <div className="info-item">
-              <span className="info-code">PH***</span>
-              <span className="info-arrow">→</span>
-              <span className="info-role">Phụ huynh</span>
-            </div>
-            <div className="info-item">
-              <span className="info-code">TX***</span>
-              <span className="info-arrow">→</span>
-              <span className="info-role">Tài xế</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
