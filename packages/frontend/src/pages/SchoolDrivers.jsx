@@ -44,15 +44,22 @@ export default function SchoolDrivers() {
     }
   ]);
 
-  const handleLogout = () => {
-    // Xóa token đăng nhập
-    localStorage.removeItem("token");
+  useEffect(() => {
+    if (localStorage.getItem("justLoggedIn") === "true") {
+      localStorage.removeItem("justLoggedIn");
 
-    // (Tuỳ chọn) Xóa thêm thông tin người dùng nếu bạn có lưu
-    // localStorage.removeItem("user");
+      const user = authService.getCurrentUser();
+      const userName = user?.name || user?.email || "bạn";
 
-    // Chuyển về trang login
-    navigate("/");
+      toast.success(`Chào ${userName}!`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    await authService.logout();
   };
 
 

@@ -1,57 +1,75 @@
-import React, { useState } from "react";
+// frontend/src/pages/SchoolDashboard.jsx
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import schoolService from "../services/schoolService";
+import authService from "../services/authService";
 import "../style/SchoolDashboard.css";
 
 export default function SchoolDashboard() {
   const navigate = useNavigate();
-  const [stats] = useState({
-    totalStudents: 1247,
-    activeBuses: 12,
-    totalBuses: 15,
-    onTimeDrivers: 18,
-    totalDrivers: 20,
-    routes: 8
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeBuses: 0,
+    totalBuses: 0,
+    onTimeDrivers: 0,
+    totalDrivers: 0,
+    routes: 0
   });
+  const [recentActivities, setRecentActivities] = useState([]);
 
-  const [recentActivities] = useState([
-    {
-      id: 1,
-      type: "success",
-      message: "Xe buýt 29B-12345 đã hoàn thành tuyến A1",
-      time: "2 phút trước",
-      icon: "✅"
-    },
-    {
-      id: 2,
-      type: "warning",
-      message: "Tài xế Nguyễn Văn A đã bắt đầu tuyến B2",
-      time: "5 phút trước",
-      icon: "📍"
-    },
-    {
-      id: 3,
-      type: "alert",
-      message: "Xe buýt 29B-67890 báo cáo chậm 10 phút do kẹt xe",
-      time: "8 phút trước",
-      icon: "⚠️"
+  // Fetch dashboard data khi component mount
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await schoolService.getDashboard();
+
+      if (response.success) {
+        const { statistics, recentActivities } = response.data;
+
+        setStats({
+          totalStudents: statistics.totalStudents || 0,
+          activeBuses: statistics.activeBuses || 0,
+          totalBuses: statistics.totalBuses || 0,
+          onTimeDrivers: statistics.onTimeDrivers || 0,
+          totalDrivers: statistics.totalDrivers || 0,
+          routes: statistics.routes || 0
+        });
+
+        setRecentActivities(recentActivities || []);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+
+      // Nếu lỗi 401 (token hết hạn), redirect về login
+      if (error.response?.status === 401) {
+        authService.logout();
+      }
+    } finally {
+      setLoading(false);
     }
-  ]);
-
-  const handleLogout = () => {
-    // Xóa JWT token khỏi localStorage
-    localStorage.removeItem("token");
-
-    // (Tùy chọn) Xóa thêm các thông tin khác nếu bạn có lưu, ví dụ:
-    // localStorage.removeItem("user");
-
-    // Chuyển hướng về trang đăng nhập
-    navigate("/");
   };
 
+  const handleLogout = () => {
+    authService.logout();
+  };
 
   const handleNavigation = (path) => {
     navigate(path);
   };
+
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>Đang tải dữ liệu...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="school-dashboard-container">
@@ -67,7 +85,7 @@ export default function SchoolDashboard() {
         </div>
         <div className="header-right">
           <button className="logout-btn" onClick={handleLogout}>
-            Đăng xuất
+            🚪 Đăng xuất
           </button>
         </div>
       </header>
@@ -138,17 +156,23 @@ export default function SchoolDashboard() {
 
         <div className="activities-section">
           <h3>🕐 Hoạt động gần đây</h3>
-          <div className="activities-list">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className={`activity-item ${activity.type}`}>
-                <span className="activity-icon">{activity.icon}</span>
-                <div className="activity-content">
-                  <p className="activity-message">{activity.message}</p>
-                  <span className="activity-time">{activity.time}</span>
+          {recentActivities.length > 0 ? (
+            <div className="activities-list">
+              {recentActivities.map((activity) => (
+                <div key={activity.id} className={`activity-item ${activity.type}`}>
+                  <span className="activity-icon">{activity.icon}</span>
+                  <div className="activity-content">
+                    <p className="activity-message">{activity.message}</p>
+                    <span className="activity-time">{activity.time}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="no-activities">
+              <p>Chưa có hoạt động nào gần đây</p>
+            </div>
+          )}
         </div>
       </main>
     </div>

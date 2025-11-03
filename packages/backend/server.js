@@ -4,6 +4,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
+const schoolRoutes = require('./routes/schoolRoutes');
 
 const app = express();
 
@@ -25,7 +26,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // Routes
 app.use('/api/auth', authRoutes);
-
+app.use('/api/school', schoolRoutes);
 // Test route
 app.get('/', (req, res) => {
   res.json({ 

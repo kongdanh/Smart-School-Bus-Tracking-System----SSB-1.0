@@ -1,6 +1,7 @@
 // frontend/src/pages/Login.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import authService from "../services/authService";
 import "../style/Login.css";
 
@@ -11,11 +12,24 @@ export default function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  // Kiểm tra nếu đã đăng nhập thì redirect
+  // ✅ Kiểm tra sessionExpired khi component mount
   useEffect(() => {
-    if (authService.isAuthenticated()) {
-      const user = authService.getCurrentUser();
-      redirectToRolePage(user.role);
+    console.log("✅ Login component mounted!");
+
+    const sessionExpired = localStorage.getItem("sessionExpired");
+    console.log("🔍 sessionExpired:", sessionExpired);
+
+    if (sessionExpired === "true") {
+      console.log("⚠️ Hiển thị toast hết phiên!");
+
+      toast.warning("Hết phiên đăng nhập!", {
+        position: "top-center",
+        autoClose: 4000,
+        onClose: () => {
+          console.log("🗑 Xóa flag sessionExpired sau khi toast đóng");
+          localStorage.removeItem("sessionExpired");
+        },
+      });
     }
   }, []);
 
@@ -47,7 +61,6 @@ export default function Login() {
         const { user } = response.data;
         console.log("Đăng nhập thành công:", user);
 
-        // Redirect theo role
         redirectToRolePage(user.role);
       }
     } catch (err) {
@@ -57,7 +70,7 @@ export default function Login() {
         setError(err.response.data.message);
       } else if (err.response?.status === 401) {
         setError("Email hoặc mật khẩu không đúng");
-      } else if (err.code === 'ERR_NETWORK') {
+      } else if (err.code === "ERR_NETWORK") {
         setError("Không thể kết nối đến server. Vui lòng kiểm tra backend.");
       } else {
         setError("Đã có lỗi xảy ra. Vui lòng thử lại.");

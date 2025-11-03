@@ -1,6 +1,7 @@
 // frontend/src/App.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import Login from "./pages/Login";
 import Parent from "./pages/Parent";
 import ParentMap from "./pages/ParentMap";
@@ -14,8 +15,29 @@ import SchoolTracking from "./pages/SchoolTracking";
 import SchoolNotifications from "./pages/SchoolNotifications";
 import ProtectedRoute from "./components/ProtectedRoute";
 import authService from "./services/authService";
+import { startAutoLogoutTimer } from "./utils/autoLogout";
 
 function App() {
+  useEffect(() => {
+    // Nếu đã đăng nhập, bắt đầu auto logout timer
+    if (authService.isAuthenticated()) {
+      startAutoLogoutTimer();
+      
+      // Hiển thị toast chào mừng
+      if (localStorage.getItem("showWelcomeToast") === "true") {
+        localStorage.removeItem("showWelcomeToast");
+        
+        const user = authService.getCurrentUser();
+        const userName = user?.name || user?.email || "bạn";
+        
+        toast.success(`Chào ${userName}!`, {
+          position: "bottom-right",
+          autoClose: 3000,
+        });
+      }
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>

@@ -14,37 +14,21 @@ export default function Driver() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchSchedule = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/driver/schedule`);
+    if (localStorage.getItem("justLoggedIn") === "true") {
+      localStorage.removeItem("justLoggedIn");
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Không thể tải lịch trình");
-        }
+      const user = authService.getCurrentUser();
+      const userName = user?.name || user?.email || "bạn";
 
-        const data = await response.json();
-        setSchedules(data);
+      toast.success(`Chào ${userName}!`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+    }
+  }, []);
 
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSchedule();
-  }, []); // Mảng rỗng [] đảm bảo useEffect chỉ chạy 1 lần
-
-  const handleLogout = () => {
-    // Xóa JWT token khỏi localStorage
-    localStorage.removeItem("token");
-
-    // (Tùy chọn) Xóa thêm các thông tin khác nếu bạn có lưu, ví dụ:
-    // localStorage.removeItem("user");
-
-    // Chuyển hướng về trang đăng nhập
-    navigate("/");
+  const handleLogout = async () => {
+    await authService.logout();
   };
 
 

@@ -183,7 +183,7 @@
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
   margin-bottom: 3rem;
 }
@@ -308,20 +308,20 @@
   .dashboard-main {
     padding: 1.5rem;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
-  
+
   .dashboard-header {
     padding: 1rem 1.5rem;
   }
-  
+
   .school-info {
     min-width: 120px;
     margin-right: 0.5rem;
   }
-  
+
   .school-name {
     max-width: 120px;
     font-size: 0.9rem;
@@ -335,31 +335,31 @@
     padding: 1rem;
     min-height: auto;
   }
-  
+
   .header-left {
     flex: 1;
     min-width: 0;
   }
-  
+
   .header-right {
     flex-shrink: 0;
     gap: 1rem;
   }
-  
+
   .school-info {
     min-width: 100px;
     margin-right: 0;
   }
-  
+
   .school-name {
     max-width: 100px;
     font-size: 0.85rem;
   }
-  
+
   .school-subtitle {
     font-size: 0.75rem;
   }
-  
+
   .logout-btn {
     padding: 0.6rem 1.2rem;
     font-size: 0.9rem;
@@ -369,7 +369,7 @@
     padding: 0 1rem;
     justify-content: flex-start;
   }
-  
+
   .nav-item {
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
@@ -378,7 +378,7 @@
   .dashboard-main {
     padding: 1rem;
   }
-  
+
   .dashboard-title h2 {
     font-size: 1.5rem;
   }
@@ -387,19 +387,19 @@
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .stat-card {
     padding: 1rem;
   }
-  
+
   .stat-icon {
     font-size: 2rem;
   }
-  
+
   .stat-value {
     font-size: 1.5rem;
   }
-  
+
   .activities-section {
     padding: 1.5rem;
   }
@@ -411,57 +411,57 @@
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .header-left,
   .header-right {
     width: 100%;
   }
-  
+
   .header-right {
     justify-content: space-between;
     margin-top: 0.5rem;
   }
-  
+
   .logo-text h1 {
     font-size: 1.2rem;
   }
-  
+
   .logo-text p {
     font-size: 0.8rem;
   }
-  
+
   .school-info {
     min-width: auto;
     flex: 1;
   }
-  
+
   .school-name {
     max-width: none;
   }
-  
+
   .dashboard-nav {
     padding: 0 0.5rem;
   }
-  
+
   .nav-item {
     padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
   }
-  
+
   .dashboard-main {
     padding: 0.75rem;
   }
-  
+
   .stat-card {
     flex-direction: column;
     text-align: center;
     gap: 0.5rem;
   }
-  
+
   .activities-section {
     padding: 1rem;
   }
-  
+
   .activity-item {
     flex-direction: column;
     text-align: center;
