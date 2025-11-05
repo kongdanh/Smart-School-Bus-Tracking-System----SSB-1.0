@@ -1,59 +1,151 @@
-.parent-portal {
+/* --- TỔNG QUAN & NỀN --- */
+.portal-layout {
     min-height: 100vh;
     width: 100vw;
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    /* Gradient nền tím-xanh giống trang admin */
+    background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
     color: #1e293b;
     font-family: "Segoe UI", Tahoma, sans-serif;
     box-sizing: border-box;
-    padding: 20px;
-    overflow-x: hidden;
-    position: relative;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
 }
 
-.header {
-    text-align: center;
-    padding: 40px 20px 20px;
+/* --- HEADER CHÍNH (Chứa logo & nút) --- */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    /* Màu header giống ảnh mẫu */
+    background-color: #6750DD;
     color: white;
-    animation: fadeInDown 0.8s ease-in-out;
-    margin-top: 60px;
-    /* Thêm khoảng cách để tránh nút đăng xuất */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-.header h1 {
+.header-logo-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-logo-title span {
     font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 10px;
+    /* Icon logo */
 }
 
-.header p {
-    font-size: 16px;
-    opacity: 0.9;
+.header-logo-title h1 {
+    font-size: 22px;
+    margin: 0;
 }
 
-section {
-    margin: 20px 0;
-    padding: 15px;
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* --- NÚT ĐĂNG XUẤT (Giống mẫu) --- */
+.logout-btn {
+    background: #dc2626;
+    /* Màu đỏ */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.3s;
+}
+
+.logout-btn:hover {
+    background: #b91c1c;
+}
+
+/* --- THANH ĐIỀU HƯỚNG TAB (Giống mẫu) --- */
+.tab-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin: 20px 20px 0 20px;
     background-color: white;
-    border-radius: 15px;
-    box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.25);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-section:hover {
-    transform: translateY(-5px);
-    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
+.tab-btn {
+    flex-grow: 1;
+    text-align: center;
+    background: transparent;
+    border: none;
+    padding: 12px 15px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.tab-btn.active {
+    background-color: #6750DD;
+    color: white;
+    box-shadow: 0 4px 10px rgba(103, 80, 221, 0.3);
+}
+
+/* --- KHUNG NỘI DUNG (Giống mẫu) --- */
+.tab-content section {
+    background: white;
+    border-radius: 12px;
+    margin: 20px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    animation: fadeInContent 0.5s ease;
 }
 
 h2 {
-    color: #2563eb;
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 5px;
-    margin-bottom: 12px;
-    font-size: 18px;
+    color: #6750DD;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+    font-size: 20px;
 }
 
+footer {
+    text-align: center;
+    margin-top: auto;
+    color: #555;
+    font-size: 14px;
+    padding: 20px;
+}
+
+@keyframes fadeInContent {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- CÁC THÀNH PHẦN CON BÊN TRONG --- */
 .map-placeholder {
     height: 300px;
     background-color: #e9ecef;
@@ -66,9 +158,9 @@ h2 {
 
 .info-card {
     background-color: #f8f9fa;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #b2e4ff;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
 }
 
 ul {
@@ -96,21 +188,8 @@ td {
 }
 
 th {
-    background-color: #007bff;
+    background-color: #6750DD;
     color: white;
-}
-
-.chat-btn {
-    background-color: #28a745;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    margin-right: 10px;
-    cursor: pointer;
-}
-
-.chat-btn:hover {
-    background-color: #218838;
 }
 
 textarea {
@@ -125,106 +204,28 @@ button {
     border: none;
     padding: 8px 16px;
     cursor: pointer;
+    border-radius: 6px;
 }
 
 button:hover {
     background-color: #0056b3;
 }
 
+.chat-btn {
+    background-color: #28a745;
+}
+
+.chat-btn:hover {
+    background-color: #218838;
+}
+
 .track-btn {
     margin-top: 10px;
     padding: 10px 16px;
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    border: none;
-    color: white;
     border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.3s;
 }
 
 .track-btn:hover {
     background: linear-gradient(135deg, #1d4ed8, #1e40af);
-    transform: translateY(-2px);
-}
-
-.logout-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 25px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 14px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.logout-btn:before {
-    content: "🚪";
-    font-size: 16px;
-}
-
-.logout-btn:hover {
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-}
-
-footer {
-    text-align: center;
-    margin-top: auto;
-    color: #cbd5e1;
-    font-size: 14px;
-    padding: 15px;
-    background: #f8f9fa;
-}
-
-/* Hiệu ứng */
-@keyframes fadeInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-15px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0px);
-    }
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(15px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0px);
-    }
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .logout-btn {
-        padding: 10px 16px;
-        font-size: 12px;
-    }
-
-    .header {
-        margin-top: 80px;
-    }
-
-    .header h1 {
-        font-size: 24px;
-    }
 }
