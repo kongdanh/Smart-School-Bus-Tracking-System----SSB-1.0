@@ -1,17 +1,22 @@
+<<<<<<< HEAD
 .parent-container {
+=======
+/* --- TỔNG QUAN & NỀN --- */
+.portal-layout {
+>>>>>>> 832ad0de51ba980482d463f837f0cb3b8116eb8e
     min-height: 100vh;
     width: 100vw;
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    /* Gradient nền tím-xanh giống trang admin */
+    background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
     color: #1e293b;
     font-family: "Segoe UI", Tahoma, sans-serif;
     box-sizing: border-box;
-    padding: 20px;
-    overflow-x: hidden;
-    position: relative;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
 }
 
+<<<<<<< HEAD
 /* Header */
 .parent-header {
     text-align: center;
@@ -22,11 +27,32 @@
 }
 
 .parent-header h1 {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 10px;
+=======
+/* --- HEADER CHÍNH (Chứa logo & nút) --- */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    /* Màu header giống ảnh mẫu */
+    background-color: #6750DD;
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
+.header-logo-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-logo-title span {
+>>>>>>> 832ad0de51ba980482d463f837f0cb3b8116eb8e
+    font-size: 28px;
+    /* Icon logo */
+}
+
+<<<<<<< HEAD
 .parent-header p {
     font-size: 16px;
     opacity: 0.9;
@@ -68,22 +94,202 @@
 .parent-card li {
     font-size: 15px;
     margin: 5px 0;
+=======
+.header-logo-title h1 {
+    font-size: 22px;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* --- NÚT ĐĂNG XUẤT (Giống mẫu) --- */
+.logout-btn {
+    background: #dc2626;
+    /* Màu đỏ */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.3s;
+}
+
+.logout-btn:hover {
+    background: #b91c1c;
+}
+
+/* --- THANH ĐIỀU HƯỚNG TAB (Giống mẫu) --- */
+.tab-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin: 20px 20px 0 20px;
+    background-color: white;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.tab-btn {
+    flex-grow: 1;
+    text-align: center;
+    background: transparent;
+    border: none;
+    padding: 12px 15px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.tab-btn.active {
+    background-color: #6750DD;
+    color: white;
+    box-shadow: 0 4px 10px rgba(103, 80, 221, 0.3);
+}
+
+/* --- KHUNG NỘI DUNG (Giống mẫu) --- */
+.tab-content section {
+    background: white;
+    border-radius: 12px;
+    margin: 20px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    animation: fadeInContent 0.5s ease;
+}
+
+h2 {
+    color: #6750DD;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+    font-size: 20px;
+}
+
+footer {
+    text-align: center;
+    margin-top: auto;
+    color: #555;
+    font-size: 14px;
+    padding: 20px;
+}
+
+@keyframes fadeInContent {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- CÁC THÀNH PHẦN CON BÊN TRONG --- */
+.map-placeholder {
+    height: 300px;
+    background-color: #e9ecef;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+}
+
+.info-card {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    background-color: #e9ecef;
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #6750DD;
+    color: white;
+}
+
+textarea {
+    width: 100%;
+    height: 100px;
+    margin: 10px 0;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+button:hover {
+    background-color: #0056b3;
+>>>>>>> 832ad0de51ba980482d463f837f0cb3b8116eb8e
+}
+
+.chat-btn {
+    background-color: #28a745;
+}
+
+.chat-btn:hover {
+    background-color: #218838;
 }
 
 .track-btn {
     margin-top: 10px;
     padding: 10px 16px;
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    border: none;
-    color: white;
     border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.3s;
 }
 
 .track-btn:hover {
     background: linear-gradient(135deg, #1d4ed8, #1e40af);
+<<<<<<< HEAD
     transform: translateY(-2px);
 }
 
@@ -207,3 +413,6 @@
         font-size: 24px;
     }
 }
+=======
+}
+>>>>>>> 832ad0de51ba980482d463f837f0cb3b8116eb8e
