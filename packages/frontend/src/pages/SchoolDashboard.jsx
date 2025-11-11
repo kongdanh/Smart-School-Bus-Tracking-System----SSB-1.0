@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import schoolService from "../services/schoolService";
+import { toast } from "react-toastify";
 import authService from "../services/authService";
 import "../style/SchoolDashboard.css";
 
@@ -21,6 +22,18 @@ export default function SchoolDashboard() {
   // Fetch dashboard data khi component mount
   useEffect(() => {
     fetchDashboardData();
+
+    if (localStorage.getItem("justLoggedIn") === "true") {
+      localStorage.removeItem("justLoggedIn");
+
+      const user = authService.getCurrentUser();
+      const userName = user?.name || user?.email || "bạn";
+
+      toast.success(`Chào ${userName}!`, {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+    }
   }, []);
 
   const fetchDashboardData = async () => {

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import studentService from "../services/studentService"
 import "../style/SchoolStudents.css";
 import "../style/SchoolDashboard.css";
 
@@ -9,38 +10,22 @@ export default function SchoolStudents() {
   const [classFilter, setClassFilter] = useState("");
   const [routeFilter, setRouteFilter] = useState("");
 
-  const [students] = useState([
-    {
-      id: "HS001",
-      name: "Nguyễn Văn An",
-      avatar: "NV",
-      class: "10A1",
-      busNumber: "29B-12345",
-      route: "Tuyến A1",
-      status: "Đã đón",
-      statusColor: "success"
-    },
-    {
-      id: "HS002",
-      name: "Lê Thị Bình",
-      avatar: "LT",
-      class: "10A2",
-      busNumber: "29B-67890",
-      route: "Tuyến B2",
-      status: "Đang đón",
-      statusColor: "warning"
-    },
-    {
-      id: "HS003",
-      name: "Trần Văn Cường",
-      avatar: "TC",
-      class: "11B1",
-      busNumber: "29B-11111",
-      route: "Tuyến C3",
-      status: "Trên xe",
-      statusColor: "info"
-    }
-  ]);
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const res = await studentService.getAllStudents();
+        console.log(res);
+        setStudents(res.data || []);
+      } catch (error) {
+        console.log("lỗi khi lấy danh sách hs", error);
+        toast.error("Không thể tải danh sách học sinh");
+      }
+    };
+
+    fetchStudents();
+  }, []);
 
   const [pagination] = useState({
     currentPage: 1,
@@ -66,7 +51,7 @@ export default function SchoolStudents() {
 
   const filteredStudents = students.filter(student => {
     return (
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      student.hoTen.toLowerCase().includes(searchTerm.toLowerCase()) &&
       (classFilter === "" || student.class === classFilter) &&
       (routeFilter === "" || student.route === routeFilter)
     );
@@ -138,8 +123,8 @@ export default function SchoolStudents() {
               className="filter-select"
             >
               <option value="">Tất cả lớp</option>
-              <option value="10A1">10A1</option>
-              <option value="10A2">10A2</option>
+              <option value="10A1">1B</option>
+              <option value="10A2">3B</option>
               <option value="11B1">11B1</option>
             </select>
             <select
@@ -168,28 +153,28 @@ export default function SchoolStudents() {
             </thead>
             <tbody>
               {filteredStudents.map((student) => (
-                <tr key={student.id}>
+                <tr key={student.maHS}>
                   <td>
                     <div className="student-info">
-                      <div className="student-avatar">{student.avatar}</div>
+                      <div className="student-avatar">{student.avatar || "n/a"}</div>
                       <div className="student-details">
-                        <div className="student-name">{student.name}</div>
-                        <div className="student-id">ID: {student.id}</div>
+                        <div className="student-name">{student.hoTen}</div>
+                        <div className="student-id">ID: {student.maHS}</div>
                       </div>
                     </div>
                   </td>
                   <td>
-                    <span className="class-badge">{student.class}</span>
+                    <span className="class-badge">{student.lop}</span>
                   </td>
                   <td>
-                    <span className="bus-number">{student.busNumber}</span>
+                    <span className="bus-number">{student.busNumber || "n/a"}</span>
                   </td>
                   <td>
-                    <span className="route-name">{student.route}</span>
+                    <span className="route-name">{student.route || "n/a"}</span>
                   </td>
                   <td>
-                    <span className={`status-badge ${student.statusColor}`}>
-                      {student.status}
+                    <span className={`status-badge ${student.statusColor || "n/a"}`}>
+                      {student.status || "n/a"}
                     </span>
                   </td>
                 </tr>

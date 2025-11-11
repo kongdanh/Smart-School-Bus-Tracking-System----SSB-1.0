@@ -2,110 +2,24 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Lấy danh sách con của phụ huynh
-exports.getChildren = async (req, res) => {
+// Lấy thông tin phụ huynh hiện tại
+exports.getCurrentParent = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.userId; // Từ middleware
 
-    // Tìm phụ huynh theo userId
     const parent = await prisma.phuhuynh.findUnique({
-      where: { userId: userId },
+      where: {
+        userId: userId
+      },
       include: {
-        hocsinh: true,
         user: {
           select: {
             hoTen: true,
             soDienThoai: true,
-            email: true
+            email: true,
+            userCode: true
           }
-        }
-      }
-    });
-
-    if (!parent) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy thông tin phụ huynh'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        parent: {
-          phuHuynhId: parent.phuHuynhId,
-          hoTen: parent.user.hoTen,
-          soDienThoai: parent.user.soDienThoai,
-          email: parent.user.email
         },
-        children: parent.hocsinh
-      }
-    });
-  } catch (error) {
-    console.error('Get children error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi lấy danh sách con',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// Lấy thông tin 1 học sinh cụ thể
-exports.getChildById = async (req, res) => {
-  try {
-    const { userId } = req.user;
-    const { id } = req.params;
-
-    // Tìm phụ huynh
-    const parent = await prisma.phuhuynh.findUnique({
-      where: { userId: userId }
-    });
-
-    if (!parent) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy thông tin phụ huynh'
-      });
-    }
-
-    // Tìm học sinh và kiểm tra có thuộc phụ huynh này không
-    const student = await prisma.hocsinh.findFirst({
-      where: {
-        hocSinhId: parseInt(id),
-        phuHuynhId: parent.phuHuynhId
-      }
-    });
-
-    if (!student) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy học sinh hoặc không có quyền truy cập'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: student
-    });
-  } catch (error) {
-    console.error('Get child error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi lấy thông tin học sinh'
-    });
-  }
-};
-
-// Lấy lịch trình xe buýt
-exports.getSchedule = async (req, res) => {
-  try {
-    const { userId } = req.user;
-
-    // Lấy thông tin phụ huynh và học sinh
-    const parent = await prisma.phuhuynh.findUnique({
-      where: { userId: userId },
-      include: {
         hocsinh: true
       }
     });
@@ -117,74 +31,82 @@ exports.getSchedule = async (req, res) => {
       });
     }
 
-    // Lấy tất cả lịch trình từ hôm nay trở đi
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const schedules = await prisma.lichtrinh.findMany({
-      where: {
-        ngay: {
-          gte: today
-        }
-      },
-      include: {
-        tuyenduong: {
-          include: {
-            tuyenduong_diemdung: {
-              include: {
-                diemdung: true
-              },
-              orderBy: {
-                thuTu: 'asc'
-              }
-            }
-          }
-        },
-        xebuyt: true,
-        taixe: {
-          include: {
-            user: {
-              select: {
-                hoTen: true,
-                soDienThoai: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: [
-        { ngay: 'asc' },
-        { gioKhoiHanh: 'asc' }
-      ],
-      take: 20
-    });
-
     res.json({
       success: true,
-      data: {
-        children: parent.hocsinh,
-        schedules: schedules
-      }
+      data: parent
     });
   } catch (error) {
-    console.error('Get schedule error:', error);
+    console.error('Get current parent error:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy lịch trình'
+      message: 'Lỗi khi lấy thông tin phụ huynh'
     });
   }
 };
 
-// Lấy vị trí xe buýt hiện tại
-exports.getBusLocation = async (req, res) => {
+// Lấy danh sách con của phụ huynh
+exports.getMyChildren = async (req, res) => {
   try {
+    const userId = req.user.userId;
+
+    const parent = await prisma.phuhuynh.findUnique({
+      where: { userId },
+      include: {
+        hocsinh: true
+      }
+    });
+
+    if (!parent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy phụ huynh'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: parent.hocsinh
+    });
+  } catch (error) {
+    console.error('Get my children error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy danh sách con'
+    });
+  }
+};
+
+// Lấy vị trí xe của con
+exports.getChildBusLocation = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { studentId } = req.params;
+
+    // Kiểm tra học sinh có phải con của phụ huynh này không
+    const student = await prisma.hocsinh.findFirst({
+      where: {
+        hocSinhId: parseInt(studentId),
+        phuhuynh: {
+          userId: userId
+        }
+      }
+    });
+
+    if (!student) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xem thông tin học sinh này'
+      });
+    }
+
+    // Lấy lịch trình hôm nay của học sinh
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Lấy các lịch trình hôm nay
-    const todaySchedules = await prisma.lichtrinh.findMany({
+    const schedule = await prisma.lichtrinh.findFirst({
       where: {
         ngay: today
+        // TODO: Cần thêm logic để tìm lịch trình của học sinh cụ thể
       },
       include: {
         xebuyt: {
@@ -193,7 +115,7 @@ exports.getBusLocation = async (req, res) => {
               orderBy: {
                 thoiGian: 'desc'
               },
-              take: 1 // Chỉ lấy vị trí mới nhất
+              take: 1
             }
           }
         },
@@ -211,30 +133,25 @@ exports.getBusLocation = async (req, res) => {
       }
     });
 
-    // Format data để dễ sử dụng hơn
-    const busLocations = todaySchedules.map(schedule => ({
-      lichTrinhId: schedule.lichTrinhId,
-      maLich: schedule.maLich,
-      gioKhoiHanh: schedule.gioKhoiHanh,
-      gioKetThuc: schedule.gioKetThuc,
-      tuyenDuong: schedule.tuyenduong?.tenTuyen,
-      xe: {
-        maXe: schedule.xebuyt?.maXe,
-        bienSo: schedule.xebuyt?.bienSo
-      },
-      taiXe: {
-        hoTen: schedule.taixe?.user?.hoTen,
-        soDienThoai: schedule.taixe?.user?.soDienThoai
-      },
-      viTriHienTai: schedule.xebuyt?.vitri[0] || null
-    }));
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy lịch trình hôm nay'
+      });
+    }
 
     res.json({
       success: true,
-      data: busLocations
+      data: {
+        student: student,
+        bus: schedule.xebuyt,
+        location: schedule.xebuyt.vitri[0] || null,
+        route: schedule.tuyenduong,
+        driver: schedule.taixe
+      }
     });
   } catch (error) {
-    console.error('Get bus location error:', error);
+    console.error('Get child bus location error:', error);
     res.status(500).json({
       success: false,
       message: 'Lỗi khi lấy vị trí xe'
@@ -242,19 +159,93 @@ exports.getBusLocation = async (req, res) => {
   }
 };
 
-// Lấy thông báo của phụ huynh
+// Lấy lịch trình xe đưa đón của con
+exports.getChildSchedule = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { studentId } = req.params;
+
+    // Kiểm tra quyền
+    const student = await prisma.hocsinh.findFirst({
+      where: {
+        hocSinhId: parseInt(studentId),
+        phuhuynh: {
+          userId: userId
+        }
+      }
+    });
+
+    if (!student) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xem lịch trình này'
+      });
+    }
+
+    // Lấy lịch trình (giả sử tất cả học sinh cùng tuyến)
+    const schedules = await prisma.lichtrinh.findMany({
+      where: {
+        ngay: {
+          gte: new Date()
+        }
+      },
+      include: {
+        xebuyt: true,
+        tuyenduong: {
+          include: {
+            tuyenduong_diemdung: {
+              include: {
+                diemdung: true
+              },
+              orderBy: {
+                thuTu: 'asc'
+              }
+            }
+          }
+        },
+        taixe: {
+          include: {
+            user: {
+              select: {
+                hoTen: true,
+                soDienThoai: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        ngay: 'asc'
+      },
+      take: 10
+    });
+
+    res.json({
+      success: true,
+      data: schedules
+    });
+  } catch (error) {
+    console.error('Get child schedule error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy lịch trình'
+    });
+  }
+};
+
+// Lấy thông báo
 exports.getNotifications = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.userId;
 
     const parent = await prisma.phuhuynh.findUnique({
-      where: { userId: userId }
+      where: { userId }
     });
 
     if (!parent) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy thông tin phụ huynh'
+        message: 'Không tìm thấy phụ huynh'
       });
     }
 
@@ -264,8 +255,7 @@ exports.getNotifications = async (req, res) => {
       },
       orderBy: {
         thoiGianGui: 'desc'
-      },
-      take: 50
+      }
     });
 
     res.json({
@@ -277,6 +267,43 @@ exports.getNotifications = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi khi lấy thông báo'
+    });
+  }
+};
+
+// Đánh dấu đã đọc thông báo
+exports.markNotificationAsRead = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { notificationId } = req.params;
+
+    // Kiểm tra quyền
+    const notification = await prisma.thongbao.findFirst({
+      where: {
+        thongBaoId: parseInt(notificationId),
+        phuhuynh: {
+          userId: userId
+        }
+      }
+    });
+
+    if (!notification) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền với thông báo này'
+      });
+    }
+
+    // TODO: Thêm trường daDoc vào schema nếu cần
+    res.json({
+      success: true,
+      message: 'Đánh dấu đã đọc thành công'
+    });
+  } catch (error) {
+    console.error('Mark notification as read error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi đánh dấu thông báo'
     });
   }
 };

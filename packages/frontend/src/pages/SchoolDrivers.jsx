@@ -1,5 +1,8 @@
-import React, { useState } from "react";
+// frontend/src/pages/SchoolDrivers.jsx
+import React, { useState, useEffect } from "react"; // ✅ Thêm useEffect
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify"; // ✅ Thêm toast
+import authService from "../services/authService"; // ✅ Thêm authService
 import "../style/SchoolDrivers.css";
 import "../style/SchoolDashboard.css";
 
@@ -41,15 +44,27 @@ export default function SchoolDrivers() {
       status: "Sẵn sàng",
       statusColor: "info",
       experience: "7 năm"
+    },
+    {
+      id: "TX004",
+      name: "Phạm Văn Tài",
+      avatar: "PT",
+      phone: "0934567890",
+      busNumber: "29B-22222",
+      route: "Tuyến D4",
+      status: "Đang lái",
+      statusColor: "success",
+      experience: "4 năm"
     }
   ]);
 
+  // ✅ useEffect để hiển thị toast chào mừng
   useEffect(() => {
     if (localStorage.getItem("justLoggedIn") === "true") {
       localStorage.removeItem("justLoggedIn");
 
       const user = authService.getCurrentUser();
-      const userName = user?.name || user?.email || "bạn";
+      const userName = user?.hoTen || user?.name || user?.email || "bạn";
 
       toast.success(`Chào ${userName}!`, {
         position: "bottom-right",
@@ -62,16 +77,15 @@ export default function SchoolDrivers() {
     await authService.logout();
   };
 
-
   const handleNavigation = (path) => {
     navigate(path);
   };
 
   const filteredDrivers = drivers.filter(driver => {
-    return (
-      driver.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (statusFilter === "" || driver.status === statusFilter)
-    );
+    const matchesSearch = driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      driver.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "" || driver.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   return (
@@ -88,7 +102,7 @@ export default function SchoolDrivers() {
         </div>
         <div className="header-right">
           <button className="logout-btn" onClick={handleLogout}>
-            Đăng xuất
+            🚪 Đăng xuất
           </button>
         </div>
       </header>
@@ -127,7 +141,7 @@ export default function SchoolDrivers() {
           <div className="search-box">
             <input
               type="text"
-              placeholder="Tìm kiếm tài xế..."
+              placeholder="🔍 Tìm kiếm tài xế theo tên hoặc ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input"
@@ -139,60 +153,83 @@ export default function SchoolDrivers() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="filter-select"
             >
-              <option value="">Tất cả trạng thái</option>
-              <option value="Đang lái">Đang lái</option>
-              <option value="Sẵn sàng">Sẵn sàng</option>
-              <option value="Nghỉ phép">Nghỉ phép</option>
+              <option value="">📋 Tất cả trạng thái</option>
+              <option value="Đang lái">🚗 Đang lái</option>
+              <option value="Sẵn sàng">✅ Sẵn sàng</option>
+              <option value="Nghỉ phép">⏸️ Nghỉ phép</option>
             </select>
           </div>
         </div>
 
-        <div className="drivers-table-container">
-          <table className="drivers-table">
-            <thead>
-              <tr>
-                <th>TÀI XẾ</th>
-                <th>SỐ ĐIỆN THOẠI</th>
-                <th>XE BUÝT</th>
-                <th>TUYẾN ĐƯỜNG</th>
-                <th>KINH NGHIỆM</th>
-                <th>TRẠNG THÁI</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDrivers.map((driver) => (
-                <tr key={driver.id}>
-                  <td>
-                    <div className="driver-info">
-                      <div className="driver-avatar">{driver.avatar}</div>
-                      <div className="driver-details">
-                        <div className="driver-name">{driver.name}</div>
-                        <div className="driver-id">ID: {driver.id}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="phone-number">{driver.phone}</span>
-                  </td>
-                  <td>
-                    <span className="bus-number">{driver.busNumber}</span>
-                  </td>
-                  <td>
-                    <span className="route-name">{driver.route}</span>
-                  </td>
-                  <td>
-                    <span className="experience">{driver.experience}</span>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${driver.statusColor}`}>
-                      {driver.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="drivers-summary">
+          <div className="summary-item">
+            <span className="summary-label">Tổng tài xế:</span>
+            <span className="summary-value">{drivers.length}</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">Đang hoạt động:</span>
+            <span className="summary-value success">
+              {drivers.filter(d => d.status === "Đang lái").length}
+            </span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">Kết quả tìm kiếm:</span>
+            <span className="summary-value">{filteredDrivers.length}</span>
+          </div>
         </div>
+
+        {filteredDrivers.length === 0 ? (
+          <div className="no-results">
+            <p>😔 Không tìm thấy tài xế nào phù hợp</p>
+          </div>
+        ) : (
+          <div className="drivers-table-container">
+            <table className="drivers-table">
+              <thead>
+                <tr>
+                  <th>TÀI XẾ</th>
+                  <th>SỐ ĐIỆN THOẠI</th>
+                  <th>XE BUÝT</th>
+                  <th>TUYẾN ĐƯỜNG</th>
+                  <th>KINH NGHIỆM</th>
+                  <th>TRẠNG THÁI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDrivers.map((driver) => (
+                  <tr key={driver.id}>
+                    <td>
+                      <div className="driver-info">
+                        <div className="driver-avatar">{driver.avatar}</div>
+                        <div className="driver-details">
+                          <div className="driver-name">{driver.name}</div>
+                          <div className="driver-id">ID: {driver.id}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="phone-number">📱 {driver.phone}</span>
+                    </td>
+                    <td>
+                      <span className="bus-number">🚌 {driver.busNumber}</span>
+                    </td>
+                    <td>
+                      <span className="route-name">🗺️ {driver.route}</span>
+                    </td>
+                    <td>
+                      <span className="experience">⏱️ {driver.experience}</span>
+                    </td>
+                    <td>
+                      <span className={`status-badge ${driver.statusColor}`}>
+                        {driver.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </main>
     </div>
   );
