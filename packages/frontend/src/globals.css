@@ -1,0 +1,10 @@
+/* ========================================
+   GLOBAL STYLES - IMPORT DESIGN SYSTEM
+   ======================================== */
+
+@import url('./styles/theme.css');
+@import url('./styles/base.css');
+@import url('./styles/components.css');
+@import url('./styles/utilities.css');
+@import url('./styles/animations.css');
+@import url('./styles/layouts.css');

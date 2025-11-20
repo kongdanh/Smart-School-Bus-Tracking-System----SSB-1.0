@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import authService from "../services/authService";
-import "../style/Login.css";
+import "../pages/Login.css";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -84,7 +84,6 @@ export default function Login() {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-icon">🚌</div>
           <h1>Smart School Bus Tracking</h1>
           <p>Đăng nhập để tiếp tục</p>
         </div>
@@ -92,13 +91,12 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="login-form">
           {error && (
             <div className="error-message">
-              <span>⚠️</span>
               <span>{error}</span>
             </div>
           )}
 
           <div className="form-group">
-            <label htmlFor="email">📧 Email</label>
+            <label htmlFor="email">Email</label>
             <input
               id="email"
               type="email"
@@ -112,7 +110,7 @@ export default function Login() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">🔒 Mật khẩu</label>
+            <label htmlFor="password">Mật khẩu</label>
             <input
               id="password"
               type="password"
@@ -132,7 +130,7 @@ export default function Login() {
                 Đang đăng nhập...
               </>
             ) : (
-              <>🚍 Đăng nhập</>
+              <>Đăng nhập</>
             )}
           </button>
 

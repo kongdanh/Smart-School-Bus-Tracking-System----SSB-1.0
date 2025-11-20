@@ -8,14 +8,35 @@ datasource db {
 }
 
 model user {
-  userId       Int           @id @default(autoincrement())
-  userCode     String        @unique
-  hoTen        String?
-  soDienThoai  String?
-  email        String?
-  quanlyxebuyt quanlyxebuyt?
-  phuhuynh     phuhuynh?
-  taixe        taixe?
+  userId      Int      @id @default(autoincrement())
+  userCode    String   @unique
+  hoTen       String?
+  soDienThoai String?
+  email       String   @unique
+  matKhau     String?
+  avatar      String?
+  trangThai   String?  @default("active")
+  taoLuc      DateTime @default(now())
+  capNhatLuc  DateTime @updatedAt
+
+  quanlyxebuyt  quanlyxebuyt?
+  phuhuynh      phuhuynh?
+  taixe         taixe?
+  messages      message[]
+  conversations conversation[]
+  support       supportTicket[]
+  settings      userSettings?
+}
+
+model userSettings {
+  settingId     Int     @id @default(autoincrement())
+  userId        Int     @unique
+  user          user    @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  thongBaoEmail Boolean @default(true)
+  thongBaoSMS   Boolean @default(true)
+  thongBaoPush  Boolean @default(true)
+  thoiBieu      String? // "dark" hoặc "light"
+  ngonNgu       String? @default("vi")
 }
 
 model quanlyxebuyt {
@@ -25,63 +46,89 @@ model quanlyxebuyt {
 }
 
 model taixe {
-  taiXeId   Int         @id @default(autoincrement())
-  userId    Int?        @unique
-  hoTen     String
-  trangThai String?
-  user      user?       @relation(fields: [userId], references: [userId])
-  lichtrinh lichtrinh[]
+  taiXeId       Int     @id @default(autoincrement())
+  userId        Int?    @unique
+  hoTen         String
+  soDienThoai   String?
+  bienSoCapphep String?
+  trangThai     String? @default("active")
+  gioHeBay      Float? // Rating từ 0-5
+  soChuyenHT    Int?    @default(0)
+
+  user        user?        @relation(fields: [userId], references: [userId], onDelete: SetNull)
+  lichtrinh   lichtrinh[]
+  attendance  attendance[]
+  tripRecords tripRecord[]
 }
 
 model phuhuynh {
-  phuHuynhId Int        @id @default(autoincrement())
-  userId     Int        @unique
-  user       user       @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  hocsinh    hocsinh[]
-  thongbao   thongbao[]
+  phuHuynhId   Int     @id @default(autoincrement())
+  userId       Int     @unique
+  diaChiLienHe String?
+
+  user     user       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  hocsinh  hocsinh[]
+  thongbao thongbao[]
 }
 
 model hocsinh {
-  hocSinhId  Int       @id @default(autoincrement())
-  maHS       String    @unique
-  hoTen      String?
-  lop        String?
-  diemDon    String?
-  diemTra    String?
-  phuHuynhId Int?
-  phuhuynh   phuhuynh? @relation(fields: [phuHuynhId], references: [phuHuynhId], onDelete: SetNull)
+  hocSinhId     Int     @id @default(autoincrement())
+  maHS          String  @unique
+  hoTen         String?
+  lop           String?
+  diemDon       String?
+  diemTra       String?
+  avatar        String?
+  soDienThoaiPH String?
+  phuHuynhId    Int?
+
+  phuhuynh   phuhuynh?     @relation(fields: [phuHuynhId], references: [phuHuynhId], onDelete: SetNull)
+  attendance attendance[]
+  trips      studentTrip[]
 }
 
 model xebuyt {
-  xeBuytId  Int         @id @default(autoincrement())
-  maXe      String      @unique
-  bienSo    String?
-  sucChua   Int?
-  trangThai String?
-  vitri     vitri[]
-  lichtrinh lichtrinh[]
+  xeBuytId     Int       @id @default(autoincrement())
+  maXe         String    @unique
+  bienSo       String?   @unique
+  sucChua      Int?
+  trangThai    String?   @default("active")
+  namSanXuat   Int?
+  ngayKiemDinh DateTime?
+
+  vitri       vitri[]
+  lichtrinh   lichtrinh[]
+  maintenance maintenance[]
 }
 
 model vitri {
-  viTriId  Int       @id @default(autoincrement())
+  viTriId  Int      @id @default(autoincrement())
   xeBuytId Int
   vido     Float?
   kinhdo   Float?
-  thoiGian DateTime?
-  xebuyt   xebuyt    @relation(fields: [xeBuytId], references: [xeBuytId], onDelete: Cascade)
+  thoiGian DateTime @default(now())
+
+  xebuyt xebuyt @relation(fields: [xeBuytId], references: [xeBuytId], onDelete: Cascade)
+
+  @@index([xeBuytId, thoiGian])
 }
 
 model diemdung {
-  diemDungId          Int                   @id @default(autoincrement())
-  tenDiemDung         String
-  diaChi              String?
+  diemDungId  Int     @id @default(autoincrement())
+  tenDiemDung String
+  diaChi      String?
+  vido        Float?
+  kinhdo      Float?
+
   tuyenduong_diemdung tuyenduong_diemdung[]
 }
 
 model tuyenduong {
-  tuyenDuongId        Int                   @id @default(autoincrement())
-  maTuyen             String                @unique
-  tenTuyen            String?
+  tuyenDuongId Int     @id @default(autoincrement())
+  maTuyen      String  @unique
+  tenTuyen     String?
+  trangThai    String? @default("active")
+
   lichtrinh           lichtrinh[]
   tuyenduong_diemdung tuyenduong_diemdung[]
 }
@@ -90,31 +137,141 @@ model tuyenduong_diemdung {
   tuyenDuongId Int
   diemDungId   Int
   thuTu        Int
-  tuyenduong   tuyenduong @relation(fields: [tuyenDuongId], references: [tuyenDuongId], onDelete: Cascade)
-  diemdung     diemdung   @relation(fields: [diemDungId], references: [diemDungId], onDelete: Cascade)
+
+  tuyenduong tuyenduong @relation(fields: [tuyenDuongId], references: [tuyenDuongId], onDelete: Cascade)
+  diemdung   diemdung   @relation(fields: [diemDungId], references: [diemDungId], onDelete: Cascade)
 
   @@id([tuyenDuongId, diemDungId])
 }
 
 model lichtrinh {
-  lichTrinhId  Int         @id @default(autoincrement())
-  maLich       String      @unique
-  ngay         DateTime?   @db.Date
-  gioKhoiHanh  DateTime?   @db.Time(0)
-  gioKetThuc   DateTime?   @db.Time(0)
+  lichTrinhId Int       @id @default(autoincrement())
+  maLich      String    @unique
+  ngay        DateTime? @db.Date
+  gioKhoiHanh DateTime? @db.Time(0)
+  gioKetThuc  DateTime? @db.Time(0)
+  trangThai   String?   @default("scheduled")
+  ghiChu      String?
+
   tuyenDuongId Int?
   taiXeId      Int?
   xeBuytId     Int?
-  tuyenduong   tuyenduong? @relation(fields: [tuyenDuongId], references: [tuyenDuongId])
-  xebuyt       xebuyt?     @relation(fields: [xeBuytId], references: [xeBuytId])
-  taixe        taixe?      @relation(fields: [taiXeId], references: [taiXeId])
+
+  tuyenduong tuyenduong? @relation(fields: [tuyenDuongId], references: [tuyenDuongId])
+  xebuyt     xebuyt?     @relation(fields: [xeBuytId], references: [xeBuytId])
+  taixe      taixe?      @relation(fields: [taiXeId], references: [taiXeId])
+
+  attendance   attendance[]
+  tripRecords  tripRecord[]
+  studentTrips studentTrip[]
+}
+
+model attendance {
+  attendanceId Int @id @default(autoincrement())
+  lichTrinhId  Int
+  hocSinhId    Int
+  taiXeId      Int
+
+  loanDon     Boolean   @default(false) // Lên xe
+  loanTra     Boolean   @default(false) // Xuống xe
+  anh         String? // URL ảnh chứng chỉ
+  thoiGianDon DateTime? // Thời gian lên xe
+  thoiGianTra DateTime? // Thời gian xuống xe
+  ghiChu      String?
+
+  lichtrinh lichtrinh @relation(fields: [lichTrinhId], references: [lichTrinhId], onDelete: Cascade)
+  hocsinh   hocsinh   @relation(fields: [hocSinhId], references: [hocSinhId], onDelete: Cascade)
+  taixe     taixe     @relation(fields: [taiXeId], references: [taiXeId], onDelete: Cascade)
+
+  @@unique([lichTrinhId, hocSinhId])
+  @@index([lichTrinhId, taiXeId])
+}
+
+model tripRecord {
+  tripRecordId Int @id @default(autoincrement())
+  lichTrinhId  Int
+  taiXeId      Int
+
+  thoiGianKD  DateTime? // Thời gian khởi hành thực tế
+  thoiGianKT  DateTime? // Thời gian kết thúc thực tế
+  soKmDiDuoc  Float?
+  tongHocSinh Int? // Tổng số học sinh trên xe
+  suCo        Boolean   @default(false)
+  moTaSuCo    String?
+
+  lichtrinh lichtrinh @relation(fields: [lichTrinhId], references: [lichTrinhId], onDelete: Cascade)
+  taixe     taixe     @relation(fields: [taiXeId], references: [taiXeId], onDelete: Cascade)
+}
+
+model studentTrip {
+  studentTripId Int     @id @default(autoincrement())
+  lichTrinhId   Int
+  hocSinhId     Int
+  trangThai     String? @default("pending") // pending, picked_up, completed
+
+  lichtrinh lichtrinh @relation(fields: [lichTrinhId], references: [lichTrinhId], onDelete: Cascade)
+  hocsinh   hocsinh   @relation(fields: [hocSinhId], references: [hocSinhId], onDelete: Cascade)
+
+  @@unique([lichTrinhId, hocSinhId])
 }
 
 model thongbao {
-  thongBaoId  Int       @id @default(autoincrement())
+  thongBaoId  Int      @id @default(autoincrement())
   phuHuynhId  Int?
   noiDung     String?
-  loai        String?
-  thoiGianGui DateTime?
-  phuhuynh    phuhuynh? @relation(fields: [phuHuynhId], references: [phuHuynhId], onDelete: Cascade)
+  loai        String? // "info", "warning", "alert"
+  thoiGianGui DateTime @default(now())
+  daDoc       Boolean  @default(false)
+
+  phuhuynh phuhuynh? @relation(fields: [phuHuynhId], references: [phuHuynhId], onDelete: Cascade)
+}
+
+model conversation {
+  conversationId Int      @id @default(autoincrement())
+  userId         Int
+  tenCuaHang     String?
+  thoiGianTao    DateTime @default(now())
+  trangThai      String?  @default("open") // open, closed, resolved
+
+  user     user      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  messages message[]
+}
+
+model message {
+  messageId      Int      @id @default(autoincrement())
+  conversationId Int
+  userId         Int
+  noiDung        String
+  thoiGianGui    DateTime @default(now())
+  daDoc          Boolean  @default(false)
+  anh            String? // URL ảnh nếu gửi ảnh
+
+  conversation conversation @relation(fields: [conversationId], references: [conversationId], onDelete: Cascade)
+  user         user         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+model supportTicket {
+  ticketId     Int       @id @default(autoincrement())
+  userId       Int
+  tieude       String
+  moTa         String?
+  mucDoCap     String?   @default("normal") // low, normal, high, urgent
+  trangThai    String?   @default("open") // open, in_progress, resolved, closed
+  thoiGianTao  DateTime  @default(now())
+  thoiGianKhac DateTime?
+
+  user user @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+model maintenance {
+  maintenanceId Int       @id @default(autoincrement())
+  xeBuytId      Int
+  loai          String? // "routine", "repair", "inspection"
+  moTa          String?
+  chipPhi       Float?
+  thoiGianBD    DateTime?
+  thoiGianKT    DateTime?
+  trangThai     String?   @default("pending") // pending, completed, cancelled
+
+  xebuyt xebuyt @relation(fields: [xeBuytId], references: [xeBuytId], onDelete: Cascade)
 }
