@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import '../../styles/parent-communication.css';
+import '../../styles/parent-styles/parent-communication.css';
 
 const Communication = () => {
     const [messages, setMessages] = useState([

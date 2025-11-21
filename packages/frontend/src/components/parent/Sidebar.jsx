@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import authService from '../../services/authService';
-import '../../styles/parent-sidebar.css';
+import '../../styles/parent-styles/parent-sidebar.css';
 
 const Sidebar = ({ isOpen, onToggle }) => {
     const location = useLocation();

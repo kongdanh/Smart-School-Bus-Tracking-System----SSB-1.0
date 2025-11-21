@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../../styles/parent-notifications.css';
+import '../../styles/parent-styles/parent-notifications.css';
 
 const Notifications = () => {
     const [notifications, setNotifications] = useState([

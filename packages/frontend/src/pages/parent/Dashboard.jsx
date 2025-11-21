@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../../styles/parent-dashboard.css';
+import '../../styles/parent-styles/parent-dashboard.css';
 
 const Dashboard = () => {
   const navigate = useNavigate();

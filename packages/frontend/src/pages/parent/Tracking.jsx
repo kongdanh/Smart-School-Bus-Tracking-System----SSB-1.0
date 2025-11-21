@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../../styles/parent-tracking.css';
+import '../../styles/parent-styles/parent-tracking.css';
 
 const Tracking = () => {
     const [selectedStudent, setSelectedStudent] = useState(null);

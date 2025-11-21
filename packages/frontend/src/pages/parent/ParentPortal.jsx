@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../../components/parent/Sidebar';
 import authService from '../../services/authService';
-import '../../styles/parent-portal.css';
+import '../../styles/parent-styles/parent-portal.css';
 
 const ParentPortal = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);

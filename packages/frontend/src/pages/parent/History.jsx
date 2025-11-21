@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../../styles/parent-history.css';
+import '../../styles/parent-styles/parent-history.css';
 
 const History = () => {
     const [filterPeriod, setFilterPeriod] = useState('all');
