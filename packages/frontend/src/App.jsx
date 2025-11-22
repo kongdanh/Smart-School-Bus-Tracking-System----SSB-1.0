@@ -11,6 +11,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 import Login from "./pages/Login";
 import Driver from "./pages/driver/Dashboard";
+import SchoolPortalLayout from "./components/school/SchoolPortalLayout";
 import SchoolDashboard from "./pages/school/Dashboard";
 import SchoolStudents from "./pages/school/Students";
 import SchoolDrivers from "./pages/school/Drivers";
@@ -148,7 +149,7 @@ function App() {
           {/* Public */}
           <Route path="/login" element={<Login />} />
 
-          {/* Phụ huynh - Updated parent routes with sub-pages */}
+          {/* Phụ huynh - Parent routes with ParentPortal layout */}
           <Route
             path="/parent"
             element={
@@ -176,63 +177,24 @@ function App() {
             }
           />
 
-          {/* Nhà trường */}
+          {/* Nhà trường - School routes with SchoolPortalLayout */}
           <Route
-            path="/school/dashboard"
+            path="/school"
             element={
               <ProtectedRoute allowedRoles={["school"]}>
-                <SchoolDashboard />
+                <SchoolPortalLayout />
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/school/students"
-            element={
-              <ProtectedRoute allowedRoles={["school"]}>
-                <SchoolStudents />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/school/drivers"
-            element={
-              <ProtectedRoute allowedRoles={["school"]}>
-                <SchoolDrivers />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/school/buses"
-            element={
-              <ProtectedRoute allowedRoles={["school"]}>
-                <SchoolBuses />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/school/routes"
-            element={
-              <ProtectedRoute allowedRoles={["school"]}>
-                <SchoolRoutes />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/school/tracking"
-            element={
-              <ProtectedRoute allowedRoles={["school"]}>
-                <SchoolTracking />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/school/notifications"
-            element={
-              <ProtectedRoute allowedRoles={["school"]}>
-                <SchoolNotifications />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route path="dashboard" element={<SchoolDashboard />} />
+            <Route path="students" element={<SchoolStudents />} />
+            <Route path="drivers" element={<SchoolDrivers />} />
+            <Route path="buses" element={<SchoolBuses />} />
+            <Route path="routes" element={<SchoolRoutes />} />
+            <Route path="tracking" element={<SchoolTracking />} />
+            <Route path="notifications" element={<SchoolNotifications />} />
+            <Route index element={<Navigate to="dashboard" replace />} />
+          </Route>
 
           {/* Root redirect */}
           <Route path="/" element={<RootRedirect />} />

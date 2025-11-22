@@ -1,0 +1,403 @@
+/* School Routes Container */
+.school-routes-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0 24px;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header */
+.routes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.routes-header .header-content h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+}
+
+.routes-subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.header-actions .btn-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--accent-primary), #6366f1);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.header-actions .btn-add:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.header-actions .btn-add svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Search */
+.routes-search {
+    margin-bottom: 24px;
+}
+
+.search-box {
+    position: relative;
+    max-width: 400px;
+}
+
+.search-box svg {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: var(--text-tertiary);
+}
+
+.search-box input {
+    width: 100%;
+    padding: 12px 16px 12px 48px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.search-box input::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* Routes Content */
+.routes-content {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+    height: 700px;
+}
+
+/* Routes List */
+.routes-list {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.routes-list h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 20px 0;
+}
+
+.route-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.route-item {
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.route-item:hover {
+    background: var(--bg-hover);
+    transform: translateX(4px);
+}
+
+.route-item.selected {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.route-item-header {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.route-color {
+    width: 4px;
+    min-width: 4px;
+    border-radius: 2px;
+}
+
+.route-info h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.route-info p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.route-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.route-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.route-stat svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary);
+}
+
+.route-details {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.route-details .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: auto;
+}
+
+.route-details .status-badge.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.route-details .status-badge.stopped {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.route-details .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.route-details .status-badge.active .status-dot {
+    background: #10b981;
+}
+
+.route-details .status-badge.stopped .status-dot {
+    background: #f59e0b;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Map Container */
+.route-map-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.map-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.map-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.selected-route-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.route-color-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+}
+
+.map-wrapper {
+    flex: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.map-popup {
+    padding: 8px;
+}
+
+.map-popup h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+}
+
+.map-popup p {
+    font-size: 12px;
+    color: #64748b;
+    margin: 0 0 8px 0;
+}
+
+.popup-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-state h3 {
+    color: var(--text-secondary);
+    font-size: 16px;
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .routes-content {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .routes-list {
+        max-height: 400px;
+    }
+
+    .route-map-container {
+        min-height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    .school-routes-container {
+        padding: 0 16px;
+    }
+
+    .routes-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .routes-header .header-content h1 {
+        font-size: 28px;
+    }
+
+    .search-box {
+        max-width: 100%;
+    }
+}

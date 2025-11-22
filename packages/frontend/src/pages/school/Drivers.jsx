@@ -1,234 +1,305 @@
-// frontend/src/pages/SchoolDrivers.jsx
-import React, { useState, useEffect } from "react"; // ✅ Thêm useEffect
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify"; // ✅ Thêm toast
-import authService from "../../services/authService"; // ✅ Thêm authService
+import React, { useState } from 'react';
+import '../../styles/school-styles/school-drivers.css';
 
-export default function SchoolDrivers() {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+const Drivers = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
+  // Mock data từ Prisma schema
   const [drivers] = useState([
     {
-      id: "TX001",
-      name: "Nguyễn Văn Minh",
-      avatar: "NM",
-      phone: "0901234567",
-      busNumber: "29B-12345",
-      route: "Tuyến A1",
-      status: "Đang lái",
-      statusColor: "success",
-      experience: "5 năm"
+      taiXeId: 1,
+      hoTen: 'Nguyễn Văn An',
+      soDienThoai: '+84 901 234 567',
+      bienSoCapphep: 'B2-12345',
+      trangThai: 'active',
+      gioHeBay: 4.8,
+      soChuyenHT: 245,
+      busNumber: '29B-12345',
+      route: 'Route A',
+      avatar: 'N'
     },
     {
-      id: "TX002",
-      name: "Trần Thị Lan",
-      avatar: "TL",
-      phone: "0912345678",
-      busNumber: "29B-67890",
-      route: "Tuyến B2",
-      status: "Nghỉ phép",
-      statusColor: "warning",
-      experience: "3 năm"
+      taiXeId: 2,
+      hoTen: 'Trần Văn Bình',
+      soDienThoai: '+84 902 345 678',
+      bienSoCapphep: 'B2-23456',
+      trangThai: 'active',
+      gioHeBay: 4.5,
+      soChuyenHT: 198,
+      busNumber: '29B-67890',
+      route: 'Route B',
+      avatar: 'T'
     },
     {
-      id: "TX003",
-      name: "Lê Văn Hùng",
-      avatar: "LH",
-      phone: "0923456789",
-      busNumber: "29B-11111",
-      route: "Tuyến C3",
-      status: "Sẵn sàng",
-      statusColor: "info",
-      experience: "7 năm"
+      taiXeId: 3,
+      hoTen: 'Lê Thị Cẩm',
+      soDienThoai: '+84 903 456 789',
+      bienSoCapphep: 'B2-34567',
+      trangThai: 'inactive',
+      gioHeBay: 4.7,
+      soChuyenHT: 312,
+      busNumber: '29B-11111',
+      route: 'Route C',
+      avatar: 'L'
     },
     {
-      id: "TX004",
-      name: "Phạm Văn Tài",
-      avatar: "PT",
-      phone: "0934567890",
-      busNumber: "29B-22222",
-      route: "Tuyến D4",
-      status: "Đang lái",
-      statusColor: "success",
-      experience: "4 năm"
+      taiXeId: 4,
+      hoTen: 'Phạm Văn Dũng',
+      soDienThoai: '+84 904 567 890',
+      bienSoCapphep: 'B2-45678',
+      trangThai: 'active',
+      gioHeBay: 4.9,
+      soChuyenHT: 156,
+      busNumber: '29B-22222',
+      route: 'Route D',
+      avatar: 'P'
+    },
+    {
+      taiXeId: 5,
+      hoTen: 'Hoàng Văn Em',
+      soDienThoai: '+84 905 678 901',
+      bienSoCapphep: 'B2-56789',
+      trangThai: 'active',
+      gioHeBay: 4.6,
+      soChuyenHT: 289,
+      busNumber: '29B-33333',
+      route: 'Route E',
+      avatar: 'H'
     }
   ]);
 
-  // ✅ useEffect để hiển thị toast chào mừng
-  useEffect(() => {
-    if (localStorage.getItem("justLoggedIn") === "true") {
-      localStorage.removeItem("justLoggedIn");
-
-      const user = authService.getCurrentUser();
-      const userName = user?.hoTen || user?.name || user?.email || "bạn";
-
-      toast.success(`Chào ${userName}!`, {
-        position: "bottom-right",
-        autoClose: 3000,
-      });
-    }
-  }, []);
-
-  const handleLogout = async () => {
-    await authService.logout();
-  };
-
-  const handleNavigation = (path) => {
-    navigate(path);
-  };
-
   const filteredDrivers = drivers.filter(driver => {
-    const matchesSearch = driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      driver.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "" || driver.status === statusFilter;
+    const matchesSearch = driver.hoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      driver.soDienThoai.includes(searchTerm);
+    const matchesStatus = statusFilter === 'all' || driver.trangThai === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
+  const activeCount = drivers.filter(d => d.trangThai === 'active').length;
+  const inactiveCount = drivers.filter(d => d.trangThai === 'inactive').length;
+  const avgRating = (drivers.reduce((sum, d) => sum + d.gioHeBay, 0) / drivers.length).toFixed(1);
+
   return (
     <div className="school-drivers-container">
-      <header className="dashboard-header">
-        <div className="header-left">
-          <div className="logo">
-            <span className="logo-icon">🏫</span>
-            <div className="logo-text">
-              <h1>Smart School Bus Tracking</h1>
-              <p>Trang dành cho Nhà Trường</p>
-            </div>
+      {/* Header */}
+      <div className="drivers-header">
+        <div className="header-content">
+          <h1>Drivers Management</h1>
+          <p className="header-subtitle">Manage bus drivers and their performance</p>
+        </div>
+        <button className="btn-add-driver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add New Driver
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="drivers-stats">
+        <div className="stat-box total">
+          <div className="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="10" r="3" />
+              <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{drivers.length}</div>
+            <div className="stat-label">Total Drivers</div>
           </div>
         </div>
-        <div className="header-right">
-          <button className="logout-btn" onClick={handleLogout}>
-            🚪 Đăng xuất
+
+        <div className="stat-box active">
+          <div className="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{activeCount}</div>
+            <div className="stat-label">Active</div>
+          </div>
+        </div>
+
+        <div className="stat-box inactive">
+          <div className="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{inactiveCount}</div>
+            <div className="stat-label">Off Duty</div>
+          </div>
+        </div>
+
+        <div className="stat-box rating">
+          <div className="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{avgRating}</div>
+            <div className="stat-label">Avg Rating</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="drivers-filters">
+        <div className="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by name or phone number..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="filter-group">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="filter-select"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Off Duty</option>
+          </select>
+
+          <button className="btn-export">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Export
           </button>
         </div>
-      </header>
+      </div>
 
-      <nav className="dashboard-nav">
-        <button className="nav-item" onClick={() => handleNavigation('/school/dashboard')}>
-          📊 Tổng quan
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/students')}>
-          👥 Học sinh
-        </button>
-        <button className="nav-item active" onClick={() => handleNavigation('/school/drivers')}>
-          🚗 Tài xế
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/buses')}>
-          🚌 Xe buýt
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/routes')}>
-          🗺️ Tuyến đường
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/tracking')}>
-          📍 Theo dõi
-        </button>
-        <button className="nav-item notification" onClick={() => handleNavigation('/school/notifications')}>
-          🔔 Tin nhắn <span className="badge">5</span>
-        </button>
-      </nav>
+      {/* Drivers Grid */}
+      <div className="drivers-grid">
+        {filteredDrivers.length > 0 ? (
+          filteredDrivers.map(driver => (
+            <div key={driver.taiXeId} className={`driver-card ${driver.trangThai}`}>
+              <div className="driver-header">
+                <div className="driver-avatar-large">
+                  {driver.avatar}
+                </div>
+                <span className={`status-badge ${driver.trangThai}`}>
+                  <span className="status-dot"></span>
+                  {driver.trangThai === 'active' ? 'Active' : 'Off Duty'}
+                </span>
+              </div>
 
-      <main className="drivers-main">
-        <div className="drivers-header">
-          <h2>🚗 Quản lý tài xế</h2>
-          <p>Thông tin và trạng thái các tài xế xe buýt</p>
-        </div>
+              <div className="driver-info">
+                <h3 className="driver-name">{driver.hoTen}</h3>
+                <div className="driver-rating">
+                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  <span>{driver.gioHeBay.toFixed(1)}</span>
+                  <span className="trips-count">({driver.soChuyenHT} trips)</span>
+                </div>
+              </div>
 
-        <div className="drivers-controls">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="🔍 Tìm kiếm tài xế theo tên hoặc ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <div className="filter-controls">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="">📋 Tất cả trạng thái</option>
-              <option value="Đang lái">🚗 Đang lái</option>
-              <option value="Sẵn sàng">✅ Sẵn sàng</option>
-              <option value="Nghỉ phép">⏸️ Nghỉ phép</option>
-            </select>
-          </div>
-        </div>
+              <div className="driver-details">
+                <div className="detail-row">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                  </svg>
+                  <span>{driver.soDienThoai}</span>
+                </div>
+                <div className="detail-row">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                  </svg>
+                  <span>{driver.bienSoCapphep}</span>
+                </div>
+                <div className="detail-row">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="1" y="3" width="15" height="13" />
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                    <circle cx="5.5" cy="18.5" r="2.5" />
+                    <circle cx="18.5" cy="18.5" r="2.5" />
+                  </svg>
+                  <span>{driver.busNumber}</span>
+                </div>
+                <div className="detail-row">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="6" cy="19" r="3" />
+                    <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+                    <circle cx="18" cy="5" r="3" />
+                  </svg>
+                  <span>{driver.route}</span>
+                </div>
+              </div>
 
-        <div className="drivers-summary">
-          <div className="summary-item">
-            <span className="summary-label">Tổng tài xế:</span>
-            <span className="summary-value">{drivers.length}</span>
-          </div>
-          <div className="summary-item">
-            <span className="summary-label">Đang hoạt động:</span>
-            <span className="summary-value success">
-              {drivers.filter(d => d.status === "Đang lái").length}
-            </span>
-          </div>
-          <div className="summary-item">
-            <span className="summary-label">Kết quả tìm kiếm:</span>
-            <span className="summary-value">{filteredDrivers.length}</span>
-          </div>
-        </div>
-
-        {filteredDrivers.length === 0 ? (
-          <div className="no-results">
-            <p>😔 Không tìm thấy tài xế nào phù hợp</p>
-          </div>
+              <div className="driver-actions">
+                <button className="btn-primary">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  View Details
+                </button>
+                <button className="btn-secondary">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  Edit
+                </button>
+              </div>
+            </div>
+          ))
         ) : (
-          <div className="drivers-table-container">
-            <table className="drivers-table">
-              <thead>
-                <tr>
-                  <th>TÀI XẾ</th>
-                  <th>SỐ ĐIỆN THOẠI</th>
-                  <th>XE BUÝT</th>
-                  <th>TUYẾN ĐƯỜNG</th>
-                  <th>KINH NGHIỆM</th>
-                  <th>TRẠNG THÁI</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDrivers.map((driver) => (
-                  <tr key={driver.id}>
-                    <td>
-                      <div className="driver-info">
-                        <div className="driver-avatar">{driver.avatar}</div>
-                        <div className="driver-details">
-                          <div className="driver-name">{driver.name}</div>
-                          <div className="driver-id">ID: {driver.id}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="phone-number">📱 {driver.phone}</span>
-                    </td>
-                    <td>
-                      <span className="bus-number">🚌 {driver.busNumber}</span>
-                    </td>
-                    <td>
-                      <span className="route-name">🗺️ {driver.route}</span>
-                    </td>
-                    <td>
-                      <span className="experience">⏱️ {driver.experience}</span>
-                    </td>
-                    <td>
-                      <span className={`status-badge ${driver.statusColor}`}>
-                        {driver.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <p>No drivers found</p>
           </div>
         )}
-      </main>
+      </div>
+
+      {/* Pagination */}
+      <div className="pagination">
+        <div className="pagination-info">
+          Showing {filteredDrivers.length} of {drivers.length} drivers
+        </div>
+        <div className="pagination-controls">
+          <button className="pagination-btn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <button className="pagination-btn active">1</button>
+          <button className="pagination-btn">2</button>
+          <button className="pagination-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default Drivers;

@@ -1,179 +1,187 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import studentService from "../../services/studentService"
+import React, { useState } from 'react';
+import '../../styles/school-styles/school-students.css';
 
-export default function SchoolStudents() {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [classFilter, setClassFilter] = useState("");
-  const [routeFilter, setRouteFilter] = useState("");
+const Students = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterClass, setFilterClass] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
-  const [students, setStudents] = useState([]);
+  const students = [
+    { hocSinhId: 1, maHS: 'HS001', hoTen: 'Nguyễn Minh An', lop: '5A', diemDon: 'Điểm A - Đường Nguyễn Hữu Cảnh, Q. Bình Thạnh', diemTra: 'School - Main Gate', avatar: 'N', soDienThoaiPH: '+84 901 234 567', phuHuynh: 'Nguyễn Văn Phụ Huynh', status: 'active', route: 'Route A' },
+    { hocSinhId: 2, maHS: 'HS002', hoTen: 'Trần Thị Bích', lop: '4B', diemDon: 'Điểm B - Đường Lê Lợi, Q.1', diemTra: 'School - Main Gate', avatar: 'T', soDienThoaiPH: '+84 902 345 678', phuHuynh: 'Trần Văn Parent', status: 'active', route: 'Route B' },
+    { hocSinhId: 3, maHS: 'HS003', hoTen: 'Lê Văn Cường', lop: '3A', diemDon: 'Điểm C - Đường Hùng Vương, Q.5', diemTra: 'School - Side Gate', avatar: 'L', soDienThoaiPH: '+84 903 456 789', phuHuynh: 'Lê Thị Parent', status: 'active', route: 'Route C' },
+    { hocSinhId: 4, maHS: 'HS004', hoTen: 'Phạm Thị Dung', lop: '5A', diemDon: 'Điểm A - Đường Nguyễn Hữu Cảnh', diemTra: 'School - Main Gate', avatar: 'P', soDienThoaiPH: '+84 904 567 890', phuHuynh: 'Phạm Văn Parent', status: 'inactive', route: 'Route A' },
+    { hocSinhId: 5, maHS: 'HS005', hoTen: 'Hoàng Văn Em', lop: '4B', diemDon: 'Điểm B - Đường Lê Lợi', diemTra: 'School - Main Gate', avatar: 'H', soDienThoaiPH: '+84 905 678 901', phuHuynh: 'Hoàng Thị Parent', status: 'active', route: 'Route B' }
+  ];
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const res = await studentService.getAllStudents();
-        console.log(res);
-        setStudents(res.data || []);
-      } catch (error) {
-        console.log("lỗi khi lấy danh sách hs", error);
-        toast.error("Không thể tải danh sách học sinh");
-      }
-    };
-
-    fetchStudents();
-  }, []);
-
-  const [pagination] = useState({
-    currentPage: 1,
-    totalPages: 5,
-    totalStudents: 1247
+  const classes = ['all', '3A', '4B', '5A'];
+  const filteredStudents = students.filter(s => {
+    const search = searchTerm.toLowerCase();
+    return (s.hoTen.toLowerCase().includes(search) || s.maHS.toLowerCase().includes(search)) &&
+      (filterClass === 'all' || s.lop === filterClass) &&
+      (filterStatus === 'all' || s.status === filterStatus);
   });
 
-  const handleLogout = () => {
-    // Xóa token đăng nhập
-    localStorage.removeItem("token");
-
-    // (Tuỳ chọn) Xóa thêm thông tin người dùng nếu bạn có lưu
-    // localStorage.removeItem("user");
-
-    // Chuyển về trang login
-    navigate("/");
-  };
-
-
-  const handleNavigation = (path) => {
-    navigate(path);
-  };
-
-  const filteredStudents = students.filter(student => {
-    return (
-      student.hoTen.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (classFilter === "" || student.class === classFilter) &&
-      (routeFilter === "" || student.route === routeFilter)
-    );
-  });
+  const activeCount = students.filter(s => s.status === 'active').length;
 
   return (
-    <div className="school-students-container">
-      <header className="dashboard-header">
-        <div className="header-left">
-          <div className="logo">
-            <span className="logo-icon">🏫</span>
-            <div className="logo-text">
-              <h1>Smart School Bus Tracking</h1>
-              <p>Trang dành cho Nhà Trường</p>
+    <>
+      <div className="school-students-container">
+
+        {/* Header */}
+        <div className="students-header">
+          <div className="header-content">
+            <h1>Students Management</h1>
+            <p className="header-subtitle">Manage and monitor all students in the system</p>
+          </div>
+          <button className="btn-add-student">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add New Student
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="students-stats">
+          <div className="stat-box total">
+            <div className="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">{students.length}</div>
+              <div className="stat-label">Total Students</div>
+            </div>
+          </div>
+          <div className="stat-box active">
+            <div className="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">{activeCount}</div>
+              <div className="stat-label">Active</div>
+            </div>
+          </div>
+          <div className="stat-box inactive">
+            <div className="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">{students.length - activeCount}</div>
+              <div className="stat-label">Inactive</div>
+            </div>
+          </div>
+          <div className="stat-box classes">
+            <div className="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">{classes.length - 1}</div>
+              <div className="stat-label">Classes</div>
             </div>
           </div>
         </div>
-        <div className="header-right">
-          <button className="logout-btn" onClick={handleLogout}>
-            Đăng xuất
-          </button>
-        </div>
-      </header>
 
-      <nav className="dashboard-nav">
-        <button className="nav-item" onClick={() => handleNavigation('/school/dashboard')}>
-          📊 Tổng quan
-        </button>
-        <button className="nav-item active" onClick={() => handleNavigation('/school/students')}>
-          👥 Học sinh
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/drivers')}>
-          🚗 Tài xế
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/buses')}>
-          🚌 Xe buýt
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/routes')}>
-          🗺️ Tuyến đường
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/tracking')}>
-          📍 Theo dõi
-        </button>
-        <button className="nav-item notification" onClick={() => handleNavigation('/school/notifications')}>
-          🔔 Tin nhắn <span className="badge">5</span>
-        </button>
-      </nav>
-
-      <main className="students-main">
-        <div className="students-header">
-          <h2>👥 Danh sách học sinh</h2>
-          <p>Quản lý thông tin học sinh sử dụng dịch vụ xe buýt</p>
-        </div>
-
-        <div className="students-controls">
+        {/* Filters */}
+        <div className="students-filters">
           <div className="search-box">
-            <input
-              type="text"
-              placeholder="Tìm kiếm học sinh..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input type="text" placeholder="Search by name or student ID..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
-          <div className="filter-controls">
-            <select
-              value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="">Tất cả lớp</option>
-              <option value="10A1">1B</option>
-              <option value="10A2">3B</option>
-              <option value="11B1">11B1</option>
+
+          <div className="filter-group">
+            <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="filter-select">
+              <option value="all">All Classes</option>
+              {classes.filter(c => c !== 'all').map(cls => <option key={cls} value={cls}>Class {cls}</option>)}
             </select>
-            <select
-              value={routeFilter}
-              onChange={(e) => setRouteFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="">Tất cả tuyến</option>
-              <option value="Tuyến A1">Tuyến A1</option>
-              <option value="Tuyến B2">Tuyến B2</option>
-              <option value="Tuyến C3">Tuyến C3</option>
+
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="filter-select">
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
+
+            <button className="btn-export-old">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export
+            </button>
           </div>
         </div>
 
+        {/* Table */}
         <div className="students-table-container">
           <table className="students-table">
             <thead>
               <tr>
-                <th>HỌC SINH</th>
-                <th>LỚP</th>
-                <th>XE BUÝT</th>
-                <th>TUYẾN ĐƯỜNG</th>
-                <th>TRẠNG THÁI</th>
+                <th>Student ID</th>
+                <th>Student Name</th>
+                <th>Class</th>
+                <th>Route</th>
+                <th>Contact</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.map((student) => (
-                <tr key={student.maHS}>
+              {filteredStudents.map(student => (
+                <tr key={student.hocSinhId}>
+                  <td><div className="student-id">{student.maHS}</div></td>
                   <td>
                     <div className="student-info">
-                      <div className="student-avatar">{student.avatar || "n/a"}</div>
-                      <div className="student-details">
+                      <div className="student-avatar">{student.avatar}</div>
+                      <div>
                         <div className="student-name">{student.hoTen}</div>
-                        <div className="student-id">ID: {student.maHS}</div>
+                        <div className="parent-name">{student.phuHuynh}</div>
                       </div>
                     </div>
                   </td>
+                  <td><span className="class-badge">{student.lop}</span></td>
+                  <td><span className="route-badge">{student.route}</span></td>
                   <td>
-                    <span className="class-badge">{student.lop}</span>
+                    <div className="contact-cell">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                      </svg>
+                      <span>{student.soDienThoaiPH}</span>
+                    </div>
                   </td>
+                  <td><span className={`status-badge ${student.status}`}>{student.status.toUpperCase()}</span></td>
                   <td>
-                    <span className="bus-number">{student.busNumber || "n/a"}</span>
-                  </td>
-                  <td>
-                    <span className="route-name">{student.route || "n/a"}</span>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${student.statusColor || "n/a"}`}>
-                      {student.status || "n/a"}
-                    </span>
+                    <div className="action-buttons">
+                      <button className="btn-action view" onClick={() => setSelectedStudent(student)} title="View Details">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                        </svg>
+                      </button>
+                      <button className="btn-action edit" title="Edit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button className="btn-action delete" title="Delete">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -181,19 +189,45 @@ export default function SchoolStudents() {
           </table>
         </div>
 
-        <div className="pagination">
-          <div className="pagination-info">
-            Hiển thị 1 đến 3 trong tổng số {pagination.totalStudents.toLocaleString()} học sinh
+        {/* Modal */}
+        {selectedStudent && (
+          <div className="modal-overlay" onClick={() => setSelectedStudent(null)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Student Details</h2>
+                <button className="modal-close" onClick={() => setSelectedStudent(null)}>✕</button>
+              </div>
+              <div className="modal-body">
+                <div className="modal-avatar-large">{selectedStudent.avatar}</div>
+                <h3>{selectedStudent.hoTen}</h3>
+                <p className="modal-id">{selectedStudent.maHS} • Class {selectedStudent.lop}</p>
+
+                <div className="modal-info-grid">
+                  <div><strong>Parent:</strong> {selectedStudent.phuHuynh}</div>
+                  <div><strong>Contact:</strong> {selectedStudent.soDienThoaiPH}</div>
+                  <div><strong>Route:</strong> <span className="route-badge">{selectedStudent.route}</span></div>
+                  <div><strong>Status:</strong> <span className={`status-badge ${selectedStudent.status}`}>{selectedStudent.status.toUpperCase()}</span></div>
+                  <div className="full-width">
+                    <strong>Pickup Point:</strong><br />
+                    <span className="location-detail">{selectedStudent.diemDon}</span>
+                  </div>
+                  <div className="full-width">
+                    <strong>Drop Point:</strong><br />
+                    <span className="location-detail">{selectedStudent.diemTra}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-close-modal-final" onClick={() => setSelectedStudent(null)}>
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="pagination-controls">
-            <button className="pagination-btn">Trước</button>
-            <button className="pagination-btn active">1</button>
-            <button className="pagination-btn">2</button>
-            <button className="pagination-btn">...</button>
-            <button className="pagination-btn">Sau</button>
-          </div>
-        </div>
-      </main>
-    </div>
+        )}
+      </div>
+    </>
   );
-}
+};
+
+export default Students;

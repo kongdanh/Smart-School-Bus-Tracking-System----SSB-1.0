@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import "../../styles/school-styles/school-routes.css";
 
 // Fix leaflet default markers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -13,23 +13,20 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function SchoolRoutes() {
-  const navigate = useNavigate();
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Tạo icons cho bản đồ
   const createIcon = (color, number) => {
     return L.divIcon({
-      html: `<div style="background-color: ${color}; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${number}</div>`,
+      html: `<div style="background-color: ${color}; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 14px;">${number}</div>`,
       className: 'custom-div-icon',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15]
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
     });
   };
 
-  // Sử dụng OSRM API để tạo tuyến đường thực tế
   useEffect(() => {
     const fetchRoutesData = async () => {
       try {
@@ -38,45 +35,44 @@ export default function SchoolRoutes() {
         const routeConfigs = [
           {
             id: "A1",
-            name: "Tuyến A1",
-            description: "Khu vực Đông - Trung tâm",
-            color: "#22c55e",
+            name: "Route A1",
+            description: "East District - City Center",
+            color: "#10b981",
             coordinates: [
-              [10.762622, 106.660172], // Trường học
-              [10.7685, 106.6825],     // Điểm dừng 1
-              [10.776889, 106.700806]  // Nhà học sinh
+              [10.762622, 106.660172],
+              [10.7685, 106.6825],
+              [10.776889, 106.700806]
             ]
           },
           {
             id: "B2",
-            name: "Tuyến B2",
-            description: "Khu vực Tây - Trung tâm",
+            name: "Route B2",
+            description: "West District - City Center",
             color: "#f59e0b",
             coordinates: [
-              [10.762622, 106.660172], // Trường học
-              [10.7565, 106.6705],     // Điểm dừng 1
-              [10.7685, 106.6825],     // Điểm dừng 2
-              [10.776889, 106.700806]  // Nhà học sinh
+              [10.762622, 106.660172],
+              [10.7565, 106.6705],
+              [10.7685, 106.6825],
+              [10.776889, 106.700806]
             ]
           },
           {
             id: "C3",
-            name: "Tuyến C3",
-            description: "Khu vực Nam - Trung tâm",
+            name: "Route C3",
+            description: "South District - City Center",
             color: "#3b82f6",
             coordinates: [
-              [10.762622, 106.660172], // Trường học
-              [10.7585, 106.6705],     // Điểm dừng 1
-              [10.7645, 106.6805],     // Điểm dừng 2
-              [10.7705, 106.6905],     // Điểm dừng 3
-              [10.776889, 106.700806]  // Nhà học sinh
+              [10.762622, 106.660172],
+              [10.7585, 106.6705],
+              [10.7645, 106.6805],
+              [10.7705, 106.6905],
+              [10.776889, 106.700806]
             ]
           }
         ];
 
         const routePromises = routeConfigs.map(async (config) => {
           try {
-            // Tạo chuỗi tọa độ cho OSRM API
             const coordString = config.coordinates
               .map(coord => `${coord[1]},${coord[0]}`)
               .join(';');
@@ -85,9 +81,7 @@ export default function SchoolRoutes() {
               `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`
             );
 
-            if (!res.ok) {
-              throw new Error(`HTTP error! status: ${res.status}`);
-            }
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
             const data = await res.json();
 
@@ -99,54 +93,36 @@ export default function SchoolRoutes() {
                 ...config,
                 stops: config.coordinates.length,
                 status: Math.random() > 0.3 ? "active" : "stopped",
-                statusText: Math.random() > 0.3 ? "Hoạt động" : "Tạm dừng",
+                statusText: Math.random() > 0.3 ? "Active" : "Stopped",
                 routeCoordinates: routeCoords,
-                distance: Math.round(route.distance / 1000), // km
-                duration: Math.round(route.duration / 60), // phút
-                stopCoordinates: config.coordinates
+                distance: Math.round(route.distance / 1000),
+                duration: Math.round(route.duration / 60),
+                stopCoordinates: config.coordinates,
+                students: Math.floor(Math.random() * 35 + 15),
+                buses: Math.floor(Math.random() * 2 + 1)
               };
-            } else {
-              throw new Error("Không có tuyến đường trong response");
             }
           } catch (err) {
-            console.error(`Lỗi khi tải tuyến ${config.name}:`, err);
+            console.error(`Error loading route ${config.name}:`, err);
             return {
               ...config,
               stops: config.coordinates.length,
               status: "error",
-              statusText: "Lỗi kết nối",
+              statusText: "Error",
               routeCoordinates: config.coordinates,
               stopCoordinates: config.coordinates,
               distance: 0,
-              duration: 0
+              duration: 0,
+              students: 0,
+              buses: 0
             };
           }
         });
 
         const fetchedRoutes = await Promise.all(routePromises);
         setRoutes(fetchedRoutes);
-        setError(null);
       } catch (err) {
-        console.error("Lỗi khi tải tuyến đường:", err);
-        setError("Không thể tải dữ liệu tuyến đường. Vui lòng thử lại sau.");
-
-        // Fallback routes nếu API lỗi
-        const fallbackRoutes = [
-          {
-            id: "A1",
-            name: "Tuyến A1",
-            description: "Khu vực Đông - Trung tâm",
-            color: "#22c55e",
-            stops: 3,
-            status: "active",
-            statusText: "Hoạt động",
-            routeCoordinates: [[10.762622, 106.660172], [10.7685, 106.6825], [10.776889, 106.700806]],
-            stopCoordinates: [[10.762622, 106.660172], [10.7685, 106.6825], [10.776889, 106.700806]],
-            distance: 5,
-            duration: 15
-          }
-        ];
-        setRoutes(fallbackRoutes);
+        console.error("Error loading routes:", err);
       } finally {
         setLoading(false);
       }
@@ -155,33 +131,17 @@ export default function SchoolRoutes() {
     fetchRoutesData();
   }, []);
 
-  const handleLogout = () => {
-    // Xóa token đăng nhập
-    localStorage.removeItem("token");
-
-    // (Tuỳ chọn) Xóa thêm thông tin người dùng nếu bạn có lưu
-    // localStorage.removeItem("user");
-
-    // Chuyển về trang login
-    navigate("/");
-  };
-
-
-  const handleNavigation = (path) => {
-    navigate(path);
-  };
-
-  const handleRouteSelect = (route) => {
-    setSelectedRoute(route);
-  };
+  const filteredRoutes = routes.filter(route =>
+    route.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    route.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
       <div className="school-routes-container">
-        <div className="loading-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-          <div className="loading-icon" style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
-          <h3>Đang tải tuyến đường...</h3>
-          <p>Đang cập nhật dữ liệu từ OSRM API</p>
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <h3>Loading routes...</h3>
         </div>
       </div>
     );
@@ -189,154 +149,156 @@ export default function SchoolRoutes() {
 
   return (
     <div className="school-routes-container">
-      <header className="dashboard-header">
-        <div className="header-left">
-          <div className="logo">
-            <span className="logo-icon">🏫</span>
-            <div className="logo-text">
-              <h1>Smart School Bus Tracking</h1>
-              <p>Trang dành cho Nhà Trường</p>
-            </div>
-          </div>
+      {/* Header */}
+      <div className="routes-header">
+        <div className="header-content">
+          <h1>Route Management</h1>
+          <p className="routes-subtitle">View and manage bus routes with real-time data</p>
         </div>
-        <div className="header-right">
-          <button className="logout-btn" onClick={handleLogout}>
-            Đăng xuất
+        <div className="header-actions">
+          <button className="btn-add">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Route
           </button>
         </div>
-      </header>
+      </div>
 
-      <nav className="dashboard-nav">
-        <button className="nav-item" onClick={() => handleNavigation('/school/dashboard')}>
-          📊 Tổng quan
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/students')}>
-          👥 Học sinh
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/drivers')}>
-          🚗 Tài xế
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/buses')}>
-          🚌 Xe buýt
-        </button>
-        <button className="nav-item active" onClick={() => handleNavigation('/school/routes')}>
-          🗺️ Tuyến đường
-        </button>
-        <button className="nav-item" onClick={() => handleNavigation('/school/tracking')}>
-          📍 Theo dõi
-        </button>
-        <button className="nav-item notification" onClick={() => handleNavigation('/school/notifications')}>
-          🔔 Tin nhắn <span className="badge">5</span>
-        </button>
-      </nav>
-
-      <main className="routes-main">
-        <div className="routes-header">
-          <h2>🗺️ Tuyến đường</h2>
-          <p>Bản đồ và thông tin các tuyến đường xe buýt (Powered by OSRM API)</p>
-          {error && <div className="error-message" style={{ color: 'red', padding: '10px', backgroundColor: '#fee', borderRadius: '4px', margin: '10px 0' }}>⚠️ {error}</div>}
+      {/* Search */}
+      <div className="routes-search">
+        <div className="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search routes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
+      </div>
 
-        <div className="routes-content" style={{ display: 'flex', gap: '20px', height: '600px' }}>
-          <div className="routes-list" style={{ flex: '1', maxWidth: '300px' }}>
-            <h3>📋 Danh sách tuyến</h3>
-            <div className="route-items">
-              {routes.map((route) => (
-                <div
-                  key={route.id}
-                  className={`route-item ${route.status} ${selectedRoute?.id === route.id ? 'selected' : ''}`}
-                  onClick={() => handleRouteSelect(route)}
-                  style={{
-                    padding: '15px',
-                    margin: '10px 0',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    backgroundColor: selectedRoute?.id === route.id ? '#f0f9ff' : 'white'
-                  }}
-                >
+      {/* Content */}
+      <div className="routes-content">
+        {/* Routes List */}
+        <div className="routes-list">
+          <h3>All Routes ({filteredRoutes.length})</h3>
+          <div className="route-items">
+            {filteredRoutes.map((route) => (
+              <div
+                key={route.id}
+                className={`route-item ${route.status} ${selectedRoute?.id === route.id ? 'selected' : ''}`}
+                onClick={() => setSelectedRoute(route)}
+              >
+                <div className="route-item-header">
+                  <div className="route-color" style={{ backgroundColor: route.color }}></div>
                   <div className="route-info">
-                    <h4 style={{ margin: '0 0 5px 0', color: route.color }}>{route.name}</h4>
-                    <p style={{ margin: '0 0 5px 0', fontSize: '14px', color: '#666' }}>{route.description}</p>
-                    <span className="stops-count" style={{ fontSize: '12px', color: '#888' }}>{route.stops} điểm dừng</span>
-                    {route.distance > 0 && (
-                      <div className="route-details" style={{ marginTop: '5px', fontSize: '12px', color: '#555' }}>
-                        <span style={{ marginRight: '10px' }}>📏 {route.distance}km</span>
-                        <span>⏱️ {route.duration} phút</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className={`route-status ${route.status}`} style={{
-                    marginTop: '10px',
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    backgroundColor: route.status === 'active' ? '#dcfce7' : route.status === 'stopped' ? '#fef3c7' : '#fee2e2',
-                    color: route.status === 'active' ? '#166534' : route.status === 'stopped' ? '#92400e' : '#991b1b'
-                  }}>
-                    {route.statusText}
+                    <h4>{route.name}</h4>
+                    <p>{route.description}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          <div className="route-map" style={{ flex: '2' }}>
-            <h3>🗺️ Bản đồ tuyến đường</h3>
-            <div className="map-container" style={{ height: '500px', border: '1px solid #ddd', borderRadius: '8px' }}>
-              <MapContainer
-                center={[10.762622, 106.660172]}
-                zoom={12}
-                scrollWheelZoom
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+                <div className="route-stats">
+                  <div className="route-stat">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span>{route.stops} stops</span>
+                  </div>
+                  <div className="route-stat">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>{route.students} students</span>
+                  </div>
+                </div>
 
-                {routes.map((route) => (
-                  <React.Fragment key={route.id}>
-                    {/* Vẽ tuyến đường */}
-                    {route.routeCoordinates && route.routeCoordinates.length > 0 && (
-                      <Polyline
-                        positions={route.routeCoordinates}
-                        pathOptions={{
-                          color: selectedRoute?.id === route.id ? route.color : '#cccccc',
-                          weight: selectedRoute?.id === route.id ? 6 : 3,
-                          opacity: selectedRoute?.id === route.id ? 1 : 0.6
-                        }}
-                      />
-                    )}
-
-                    {/* Vẽ các điểm dừng */}
-                    {route.stopCoordinates && route.stopCoordinates.map((coord, stopIndex) => (
-                      <Marker
-                        key={`${route.id}-stop-${stopIndex}`}
-                        position={coord}
-                        icon={createIcon(route.color, stopIndex + 1)}
-                      >
-                        <Popup>
-                          <div style={{ padding: '8px' }}>
-                            <h4 style={{ margin: '0 0 4px 0', color: '#1e293b' }}>{route.name}</h4>
-                            <p style={{ margin: '0', color: '#64748b' }}>Điểm dừng {stopIndex + 1}</p>
-                            <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>Trạng thái: {route.statusText}</p>
-                            {route.distance > 0 && (
-                              <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>
-                                📏 {route.distance}km | ⏱️ {route.duration} phút
-                              </p>
-                            )}
-                          </div>
-                        </Popup>
-                      </Marker>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </MapContainer>
-            </div>
+                {route.distance > 0 && (
+                  <div className="route-details">
+                    <span>📏 {route.distance}km</span>
+                    <span>⏱️ {route.duration} mins</span>
+                    <span className={`status-badge ${route.status}`}>
+                      <span className="status-dot"></span>
+                      {route.statusText}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
-      </main>
+
+        {/* Map */}
+        <div className="route-map-container">
+          <div className="map-header">
+            <h3>Route Map</h3>
+            {selectedRoute && (
+              <div className="selected-route-info">
+                <div className="route-color-indicator" style={{ backgroundColor: selectedRoute.color }}></div>
+                <span>{selectedRoute.name}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="map-wrapper">
+            <MapContainer
+              center={[10.762622, 106.660172]}
+              zoom={12}
+              scrollWheelZoom
+              style={{ height: "100%", width: "100%" }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+
+              {routes.map((route) => (
+                <React.Fragment key={route.id}>
+                  {route.routeCoordinates && route.routeCoordinates.length > 0 && (
+                    <Polyline
+                      positions={route.routeCoordinates}
+                      pathOptions={{
+                        color: selectedRoute?.id === route.id ? route.color : '#cccccc',
+                        weight: selectedRoute?.id === route.id ? 5 : 3,
+                        opacity: selectedRoute?.id === route.id ? 1 : 0.5
+                      }}
+                    />
+                  )}
+
+                  {route.stopCoordinates && route.stopCoordinates.map((coord, stopIndex) => (
+                    <Marker
+                      key={`${route.id}-stop-${stopIndex}`}
+                      position={coord}
+                      icon={createIcon(route.color, stopIndex + 1)}
+                    >
+                      <Popup>
+                        <div className="map-popup">
+                          <h4>{route.name}</h4>
+                          <p>Stop {stopIndex + 1}</p>
+                          <div className="popup-info">
+                            <span>Status: {route.statusText}</span>
+                            {route.distance > 0 && (
+                              <span>{route.distance}km • {route.duration} mins</span>
+                            )}
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </React.Fragment>
+              ))}
+            </MapContainer>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
