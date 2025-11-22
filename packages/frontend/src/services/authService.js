@@ -1,8 +1,11 @@
 // frontend/src/services/authService.js
+import axios from "axios";
 import { startAutoLogoutTimer, clearAutoLogoutTimer } from "../utils/autoLogout";
 
 // === CẤU HÌNH MOCK MODE ===
-const MOCK_MODE = true; // Đổi thành false nếu muốn dùng backend thật
+const MOCK_MODE = false; // Đổi thành false nếu muốn dùng backend thật
+
+const API_URL = "http://localhost:5000/api/auth";
 
 // Dữ liệu giả lập cho 3 role
 const mockUsers = {
@@ -35,40 +38,33 @@ const mockUsers = {
   }
 };
 
-// Chỉ cấu hình axios interceptor khi dùng backend thật
-let axios;
-if (!MOCK_MODE) {
-  axios = require("axios").default;
-  const API_URL = "http://localhost:5000/api/auth";
-
-  // Thêm token vào header
-  axios.interceptors.request.use(
-    (config) => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => Promise.reject(error)
-  );
-
-  // Xử lý 401 → logout
-  axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response?.status === 401) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        clearAutoLogoutTimer();
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
-        }
-      }
-      return Promise.reject(error);
+// Thêm token vào header
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-  );
-}
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Xử lý 401 → logout
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      clearAutoLogoutTimer();
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 const authService = {
   // ĐĂNG NHẬP

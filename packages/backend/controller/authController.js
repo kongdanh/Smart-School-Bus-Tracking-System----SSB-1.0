@@ -76,18 +76,33 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Kiểm tra mật khẩu (giả sử password chưa mã hóa trong DB)
-    // Nếu đã mã hóa, dùng: const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!user.email || user.email !== email) {
+    // ✅ KIỂM TRA MẬT KHẨU
+    let isPasswordValid = false;
+    
+    if (user.password) {
+      // Nếu có trường password trong DB
+      // Kiểm tra xem password có được mã hóa không
+      if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+        // Password đã được hash bằng bcrypt
+        isPasswordValid = await bcrypt.compare(password, user.password);
+      } else {
+        // Password chưa hash (plain text) - không khuyến khích
+        isPasswordValid = password === user.password;
+      }
+    } else {
+      // ⚠️ TẠM THỜI: Nếu chưa có trường password, chấp nhận bất kỳ password nào
+      // CHỈ DÙNG CHO DEVELOPMENT - XÓA KHI PRODUCTION
+      console.warn('⚠️ WARNING: User table does not have password field!');
+      isPasswordValid = true; // Tạm thời cho phép đăng nhập
+    }
+
+    if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
         message: 'Email hoặc mật khẩu không đúng'
       });
     }
 
-    // Tạm thời kiểm tra password đơn giản (nếu bạn chưa có trường password)
-    // Bạn cần thêm trường password vào bảng user
-    
     // Xác định role từ userCode
     const role = getRoleFromUserCode(user.userCode);
     
