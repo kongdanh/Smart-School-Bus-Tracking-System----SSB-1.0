@@ -1,0 +1,181 @@
+/* src/styles/driver-styles/driver-sidebar.css */
+.driver-sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, #1e40af 0%, #1e3a8a 100%);
+    color: white;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1000;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 20px -4px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.driver-sidebar.closed {
+    width: 80px;
+}
+
+.sidebar-header {
+    padding: 20px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    height: 80px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    font-size: 1.3rem;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    background: #60a5fa;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+}
+
+.logo-text {
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+
+.driver-sidebar.closed .logo-text {
+    opacity: 0;
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.sidebar-menu {
+    flex: 1;
+    padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 20px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    position: relative;
+    transition: all 0.25s;
+    margin: 2px 12px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.sidebar-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateX(4px);
+}
+
+.sidebar-item.active {
+    background: rgba(96, 165, 250, 0.2);
+    color: #60a5fa;
+    font-weight: 600;
+    border-left: 4px solid #60a5fa;
+}
+
+.item-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.item-icon svg {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2.2;
+}
+
+.item-label {
+    margin-left: 16px;
+    white-space: nowrap;
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+
+.driver-sidebar.closed .item-label {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.badge {
+    position: absolute;
+    right: 16px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.75rem;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+/* NÚT ĐĂNG XUẤT */
+.sidebar-item.logout {
+    margin-top: auto;
+    margin-bottom: 20px;
+    color: #fca5a5;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+}
+
+.sidebar-item.logout:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    transform: translateX(4px);
+}
+
+.sidebar-item.logout .item-icon svg {
+    stroke: #ef4444;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .driver-sidebar {
+        width: 80px;
+    }
+
+    .driver-sidebar .logo-text,
+    .driver-sidebar .item-label {
+        opacity: 0;
+        pointer-events: none;
+    }
+}

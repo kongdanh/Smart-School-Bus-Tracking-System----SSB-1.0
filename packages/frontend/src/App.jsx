@@ -9,8 +9,21 @@ import {
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// import các trang và component
+// login page
 import Login from "./pages/Login";
-import Driver from "./pages/driver/Dashboard";
+
+// driver pages and layout
+import DriverLayout from './components/driver/DriverLayout';
+import DriverDashboardPage from './components/driver/DriverDashboard';
+import DriverAttendance from './pages/driver/Attendance';
+import DriverCheckInOut from './pages/driver/CheckInOut';
+import DriverSettings from './pages/driver/Settings';
+import DriverRoutes from './pages/driver/Routes';
+import DriverBustatus from './pages/driver/BusStatus';
+import DriverNotifications from './pages/driver/Notifications';
+
+// school pages and layout
 import SchoolPortalLayout from "./components/school/SchoolPortalLayout";
 import SchoolDashboard from "./pages/school/Dashboard";
 import SchoolStudents from "./pages/school/Students";
@@ -19,8 +32,12 @@ import SchoolBuses from "./pages/school/Buses";
 import SchoolRoutes from "./pages/school/Routes";
 import SchoolTracking from "./pages/school/Tracking";
 import SchoolNotifications from "./pages/school/Notifications";
+
+// protected route component
 import ProtectedRoute from "./components/ProtectedRoute";
 import authService from "./services/authService";
+
+// parent pages and layout
 import ParentPortal from './pages/parent/ParentPortal';
 import ParentDashboard from './pages/parent/Dashboard';
 import ParentTracking from './pages/parent/Tracking';
@@ -167,15 +184,24 @@ function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
-          {/* Tài xế */}
+          {/* Tài xế - Driver Portal với Layout */}
           <Route
             path="/driver"
             element={
               <ProtectedRoute allowedRoles={["driver"]}>
-                <Driver />
+                <DriverLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<DriverDashboardPage />} />
+            <Route path="attendance" element={<DriverAttendance />} />
+            <Route path="checkinout" element={<DriverCheckInOut />} />
+            <Route path="settings" element={<DriverSettings />} />
+            <Route path="routes" element={<DriverRoutes />} />
+            <Route path="notifications" element={<DriverNotifications />} />
+            <Route path="bus-status" element={<DriverBustatus />} />
+            {/* Thêm các route khác nếu cần */}
+          </Route>
 
           {/* Nhà trường - School routes with SchoolPortalLayout */}
           <Route

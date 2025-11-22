@@ -1,0 +1,330 @@
+.attendance-master {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 16px;
+    font-family: system-ui, sans-serif;
+}
+
+.page-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #60a5fa;
+    margin: 0 0 4px 0;
+}
+
+.page-subtitle {
+    color: #94a3b8;
+    margin: 0 0 20px;
+}
+
+/* Header tuyến */
+.trip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1e293b;
+    padding: 16px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+}
+
+.trip-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.bus-icon {
+    width: 48px;
+    height: 48px;
+    background: #3b82f6;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.4rem;
+}
+
+.trip-info strong {
+    color: #e2e8f0;
+    font-size: 1.1rem;
+}
+
+.time {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.quick-mark-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+}
+
+/* Stats nhỏ gọn */
+.stats-compact {
+    display: flex;
+    justify-content: space-around;
+    background: #1e293b;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.stat .num {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.stat .num.total {
+    color: #60a5fa;
+}
+
+.stat .num.picked {
+    color: #10b981;
+}
+
+.stat .num.pending {
+    color: #f59e0b;
+}
+
+.stat .num.dropped {
+    color: #8b5cf6;
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 14px 16px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    color: white;
+    font-size: 1rem;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-tabs button {
+    flex: 1;
+    padding: 10px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    border-radius: 10px;
+}
+
+.filter-tabs button.active {
+    background: #60a5fa;
+    color: white;
+    border-color: #60a5fa;
+}
+
+/* Danh sách học sinh – gọn, dễ bấm */
+.student-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.student-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #1e293b;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.student-row.picked {
+    border-color: #10b981;
+}
+
+.student-row.dropped {
+    border-color: #8b5cf6;
+}
+
+.student-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    background: #3b82f6;
+    color: white;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.info .name {
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+.code {
+    margin-left: 8px;
+    background: rgba(96, 165, 250, 0.3);
+    color: #60a5fa;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
+
+.details {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+.note-tag {
+    margin-top: 6px;
+    background: rgba(251, 146, 60, 0.2);
+    color: #fdba74;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
+
+.student-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.act {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 78px;
+    text-align: center;
+}
+
+.act.pickup {
+    background: #334155;
+    color: #94a3b8;
+}
+
+.act.pickup.done {
+    background: #10b981;
+    color: white;
+}
+
+.act.dropoff {
+    background: #334155;
+    color: #94a3b8;
+}
+
+.act.dropoff.done {
+    background: #8b5cf6;
+    color: white;
+}
+
+.act.note {
+    background: #334155;
+    color: #94a3b8;
+}
+
+/* Modal */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: #1e293b;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 460px;
+    padding: 24px;
+}
+
+.modal h3 {
+    margin: 0 0 16px;
+    color: #60a5fa;
+}
+
+.modal textarea {
+    width: 100%;
+    padding: 12px;
+    background: #334155;
+    border: 1px solid #475569;
+    border-radius: 10px;
+    color: white;
+}
+
+.modal-btns {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.modal-btns button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.modal-btns button:first-child {
+    background: #334155;
+    color: white;
+}
+
+.modal-btns .save {
+    background: #60a5fa;
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .student-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .student-actions {
+        flex-direction: row;
+        width: 100%;
+    }
+
+    .act {
+        flex: 1;
+    }
+}
