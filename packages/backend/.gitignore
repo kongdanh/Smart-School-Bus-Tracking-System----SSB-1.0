@@ -41,3 +41,14 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# ============ THÊM PHẦN NÀY ============
+# Uploads - Ignore all uploaded files but keep folder structure
+/uploads/*
+!/uploads/.gitkeep
+!/uploads/avatars/
+!/uploads/attendance/
+/uploads/avatars/*
+!/uploads/avatars/.gitkeep
+/uploads/attendance/*
+!/uploads/attendance/.gitkeep

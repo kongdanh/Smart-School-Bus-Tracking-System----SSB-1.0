@@ -1,3 +1,27 @@
+/* ==================== ATTENDANCE PAGE HEADER ==================== */
+.attendance-master .page-header-consistent {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.attendance-master .page-header-consistent h1 {
+    margin: 0 0 8px 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #60a5fa !important;
+}
+
+.attendance-master .page-header-consistent .page-subtitle {
+    color: #94a3b8 !important;
+    margin: 0;
+    font-size: 1rem;
+}
+
+/* ==================== ATTENDANCE PAGE ==================== */
 .attendance-master {
     max-width: 1000px;
     margin: 0 auto;
@@ -5,19 +29,7 @@
     font-family: system-ui, sans-serif;
 }
 
-.page-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #60a5fa;
-    margin: 0 0 4px 0;
-}
-
-.page-subtitle {
-    color: #94a3b8;
-    margin: 0 0 20px;
-}
-
-/* Header tuyến */
+/* Trip Header */
 .trip-header {
     display: flex;
     justify-content: space-between;
@@ -68,9 +80,16 @@
     align-items: center;
     gap: 8px;
     font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-/* Stats nhỏ gọn */
+.quick-mark-btn:hover {
+    background: #059669;
+    transform: translateY(-2px);
+}
+
+/* Stats Compact */
 .stats-compact {
     display: flex;
     justify-content: space-around;
@@ -121,6 +140,10 @@
     font-size: 1rem;
 }
 
+.search-box input::placeholder {
+    color: #64748b;
+}
+
 .filter-tabs {
     display: flex;
     gap: 8px;
@@ -133,6 +156,14 @@
     border: 1px solid #334155;
     color: #94a3b8;
     border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+}
+
+.filter-tabs button:hover {
+    background: #334155;
+    color: white;
 }
 
 .filter-tabs button.active {
@@ -141,7 +172,7 @@
     border-color: #60a5fa;
 }
 
-/* Danh sách học sinh – gọn, dễ bấm */
+/* Student List */
 .student-list {
     display: flex;
     flex-direction: column;
@@ -159,12 +190,18 @@
     transition: all 0.2s;
 }
 
+.student-row:hover {
+    background: #283548;
+}
+
 .student-row.picked {
     border-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
 }
 
 .student-row.dropped {
     border-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.05);
 }
 
 .student-main {
@@ -191,6 +228,7 @@
 .info .name {
     color: #e2e8f0;
     font-weight: 600;
+    font-size: 1rem;
 }
 
 .code {
@@ -217,6 +255,7 @@
     font-size: 0.8rem;
 }
 
+/* Student Actions */
 .student-actions {
     display: flex;
     gap: 8px;
@@ -229,6 +268,9 @@
     font-size: 0.9rem;
     min-width: 78px;
     text-align: center;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .act.pickup {
@@ -236,9 +278,18 @@
     color: #94a3b8;
 }
 
+.act.pickup:hover {
+    background: #475569;
+    color: white;
+}
+
 .act.pickup.done {
     background: #10b981;
     color: white;
+}
+
+.act.pickup.done:hover {
+    background: #059669;
 }
 
 .act.dropoff {
@@ -246,14 +297,38 @@
     color: #94a3b8;
 }
 
+.act.dropoff:hover {
+    background: #475569;
+    color: white;
+}
+
 .act.dropoff.done {
     background: #8b5cf6;
     color: white;
 }
 
+.act.dropoff.done:hover {
+    background: #7c3aed;
+}
+
+.act.dropoff:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .act.note {
     background: #334155;
     color: #94a3b8;
+}
+
+.act.note:hover {
+    background: #475569;
+    color: white;
+}
+
+.act:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Modal */
@@ -278,6 +353,7 @@
 .modal h3 {
     margin: 0 0 16px;
     color: #60a5fa;
+    font-size: 1.3rem;
 }
 
 .modal textarea {
@@ -287,6 +363,14 @@
     border: 1px solid #475569;
     border-radius: 10px;
     color: white;
+    font-family: inherit;
+    font-size: 1rem;
+    resize: vertical;
+}
+
+.modal textarea:focus {
+    outline: none;
+    border-color: #60a5fa;
 }
 
 .modal-btns {
@@ -300,6 +384,10 @@
     padding: 12px;
     border-radius: 10px;
     font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
 }
 
 .modal-btns button:first-child {
@@ -307,13 +395,26 @@
     color: white;
 }
 
+.modal-btns button:first-child:hover {
+    background: #475569;
+}
+
 .modal-btns .save {
     background: #60a5fa;
     color: white;
 }
 
+.modal-btns .save:hover {
+    background: #3b82f6;
+}
+
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+    .page-header-consistent {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
     .student-row {
         flex-direction: column;
         align-items: stretch;
@@ -322,9 +423,20 @@
     .student-actions {
         flex-direction: row;
         width: 100%;
+        margin-top: 12px;
     }
 
     .act {
         flex: 1;
+    }
+}
+
+@media (max-width: 640px) {
+    .stats-compact {
+        flex-wrap: wrap;
+    }
+
+    .stat {
+        flex: 1 0 45%;
     }
 }

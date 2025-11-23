@@ -3,60 +3,81 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Middleware xác thực token
-exports.verifyToken = (req, res, next) => {
+const protect = async (req, res, next) => {
   try {
+    let token;
+
     // Lấy token từ header Authorization
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    // Kiểm tra token có tồn tại không
+    if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Không tìm thấy token xác thực'
+        message: 'Không có token, vui lòng đăng nhập'
       });
     }
 
-    const token = authHeader.split(' ')[1];
-    
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Lưu thông tin user vào request
-    req.user = decoded;
-    
+
+    // Lưu thông tin user vào req.user
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+      hoTen: decoded.hoTen
+    };
+
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
+
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Token không hợp lệ'
+      });
+    }
+
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
         message: 'Token đã hết hạn'
       });
     }
-    
-    return res.status(401).json({
+
+    res.status(500).json({
       success: false,
-      message: 'Token không hợp lệ'
+      message: 'Lỗi xác thực'
     });
   }
 };
 
 // Middleware kiểm tra role
-exports.checkRole = (...allowedRoles) => {
+const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Vui lòng đăng nhập'
+        message: 'Chưa xác thực'
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: 'Bạn không có quyền truy cập tài nguyên này'
+        message: `Chỉ ${roles.join(', ')} mới có quyền truy cập`
       });
     }
 
     next();
   };
+};
+
+module.exports = {
+  protect,
+  authorize
 };

@@ -56,7 +56,7 @@ const getRedirectPath = (user) => {
     case "parent":
       return "/parent/dashboard";
     case "driver":
-      return "/driver";
+      return "/driver/dashboard";  // ✅ FIXED: Thay đổi từ "/driver" thành "/driver/dashboard"
     default:
       return "/login";
   }
@@ -193,7 +193,9 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<DriverDashboardPage />} />
+            {/* ✅ FIXED: Thay đổi index route để redirect đến dashboard */}
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<DriverDashboardPage />} />
             <Route path="attendance" element={<DriverAttendance />} />
             <Route path="checkinout" element={<DriverCheckInOut />} />
             <Route path="settings" element={<DriverSettings />} />

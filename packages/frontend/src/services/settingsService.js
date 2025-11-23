@@ -1,165 +1,156 @@
-// frontend/services/busService.js
+// frontend/services/settingsService.js
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-const busService = {
-    // Lấy xe của tài xế hiện tại
-    getMyBus: async () => {
+const settingsService = {
+    // Lấy cài đặt người dùng
+    getUserSettings: async () => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.get(
-                `${API_URL}/bus/my-bus`,
+                `${API_URL}/settings`,
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
             );
             return response.data;
         } catch (error) {
-            console.error('Error getting my bus:', error);
+            console.error('Error getting user settings:', error);
             throw error.response?.data || error;
         }
     },
 
-    // Lấy danh sách tất cả xe (School Admin)
-    getAllBuses: async (page = 1, limit = 10, search = '') => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/bus`,
-                {
-                    params: { page, limit, search },
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error getting all buses:', error);
-            throw error.response?.data || error;
-        }
-    },
-
-    // Lấy chi tiết xe
-    getBusDetail: async (xeBuytId) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/bus/${xeBuytId}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error getting bus detail:', error);
-            throw error.response?.data || error;
-        }
-    },
-
-    // Lấy vị trí xe
-    getBusLocation: async (xeBuytId) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/bus/${xeBuytId}/location`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error getting bus location:', error);
-            throw error.response?.data || error;
-        }
-    },
-
-    // Cập nhật vị trí xe (Driver)
-    updateBusLocation: async (xeBuytId, vido, kinhdo) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post(
-                `${API_URL}/bus/location`,
-                { xeBuytId, vido, kinhdo },
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error updating bus location:', error);
-            throw error.response?.data || error;
-        }
-    },
-
-    // Tạo xe mới (School Admin)
-    createBus: async (busData) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post(
-                `${API_URL}/bus`,
-                busData,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error creating bus:', error);
-            throw error.response?.data || error;
-        }
-    },
-
-    // Cập nhật thông tin xe (School Admin)
-    updateBus: async (xeBuytId, busData) => {
+    // Cập nhật cài đặt thông báo
+    updateNotificationSettings: async (settings) => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.put(
-                `${API_URL}/bus/${xeBuytId}`,
-                busData,
+                `${API_URL}/settings/notifications`,
+                settings,
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
             );
             return response.data;
         } catch (error) {
-            console.error('Error updating bus:', error);
+            console.error('Error updating notification settings:', error);
             throw error.response?.data || error;
         }
     },
 
-    // Xóa xe (School Admin)
-    deleteBus: async (xeBuytId) => {
+    // Cập nhật theme
+    updateTheme: async (thoiBieu) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.put(
+                `${API_URL}/settings/theme`,
+                { thoiBieu },
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error updating theme:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Cập nhật ngôn ngữ
+    updateLanguage: async (ngonNgu) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.put(
+                `${API_URL}/settings/language`,
+                { ngonNgu },
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error updating language:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Cập nhật thông tin cá nhân
+    updateProfile: async (profileData) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.put(
+                `${API_URL}/settings/profile`,
+                profileData,
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Đổi mật khẩu
+    changePassword: async (currentPassword, newPassword) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.put(
+                `${API_URL}/settings/password`,
+                { currentPassword, newPassword },
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error changing password:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Upload avatar
+    uploadAvatar: async (file) => {
+        try {
+            const token = localStorage.getItem('token');
+            const formData = new FormData();
+            formData.append('avatar', file);
+
+            const response = await axios.post(
+                `${API_URL}/settings/avatar`,
+                formData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error uploading avatar:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Xóa avatar
+    deleteAvatar: async () => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.delete(
-                `${API_URL}/bus/${xeBuytId}`,
+                `${API_URL}/settings/avatar`,
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
             );
             return response.data;
         } catch (error) {
-            console.error('Error deleting bus:', error);
-            throw error.response?.data || error;
-        }
-    },
-
-    // Lấy thống kê xe (School Admin)
-    getBusStats: async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/bus/stats`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error getting bus stats:', error);
+            console.error('Error deleting avatar:', error);
             throw error.response?.data || error;
         }
     }
 };
 
-export default busService;
+export default settingsService;

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 import "../../styles/driver-styles/driver-attendance.css";
 
-// Mock data giữ nguyên 100%
 const mockCurrentTrip = {
     tuyenDuong: { tenTuyen: "Tuyến 1: Quận 1 - Quận 7" },
     gioKhoiHanh: "06:30",
@@ -10,7 +9,6 @@ const mockCurrentTrip = {
 };
 
 const mockStudents = [
-    // ... giữ nguyên toàn bộ 5 học sinh bạn đã có (mình chèn đủ ở dưới)
     { hocSinhId: 1, maHS: "HS001", hoTen: "Nguyễn Văn A", lop: "10A1", diemDon: "123 Đường ABC, Q.1", soDienThoaiPH: "0901234567", attendance: { loanDon: false, loanTra: false, thoiGianDon: null, thoiGianTra: null, ghiChu: "" } },
     { hocSinhId: 2, maHS: "HS002", hoTen: "Trần Thị B", lop: "10A2", diemDon: "456 Đường DEF, Q.1", soDienThoaiPH: "0907654321", attendance: { loanDon: false, loanTra: false, thoiGianDon: null, thoiGianTra: null, ghiChu: "" } },
     { hocSinhId: 3, maHS: "HS003", hoTen: "Lê Văn C", lop: "10B1", diemDon: "789 Đường GHI, Q.3", soDienThoaiPH: "0912345678", attendance: { loanDon: false, loanTra: false, thoiGianDon: null, thoiGianTra: null, ghiChu: "" } },
@@ -26,7 +24,6 @@ export default function AttendancePage() {
     const [showNoteModal, setShowNoteModal] = useState(false);
     const [noteText, setNoteText] = useState("");
 
-    // Thống kê
     const stats = {
         total: students.length,
         pickedUp: students.filter(s => s.attendance.loanDon).length,
@@ -89,20 +86,23 @@ export default function AttendancePage() {
 
     return (
         <div className="attendance-master">
-            <h1 className="page-title">Điểm Danh Học Sinh</h1>
-            <p className="page-subtitle">Theo dõi việc đón và trả trên tuyến xe</p>
+            {/* UPDATED HEADER - Consistent with Routes */}
+            <div className="page-header-consistent">
+                <h1>Điểm Danh Học Sinh</h1>
+                <p className="page-subtitle">Theo dõi việc đón và trả học sinh trên tuyến xe</p>
+            </div>
 
             {/* Tuyến + Quick button */}
             <div className="trip-header">
                 <div className="trip-info">
-                    <div className="bus-icon">Bus</div>
+                    <div className="bus-icon">🚌</div>
                     <div>
                         <strong>{mockCurrentTrip.tuyenDuong.tenTuyen}</strong>
                         <div className="time">{mockCurrentTrip.gioKhoiHanh} – {mockCurrentTrip.gioKetThuc}</div>
                     </div>
                 </div>
                 <button className="quick-mark-btn" onClick={handleQuickMarkAll}>
-                    Check All Đón tất cả
+                    ✓ Đón tất cả
                 </button>
             </div>
 
@@ -117,7 +117,7 @@ export default function AttendancePage() {
             {/* Search + Filter */}
             <div className="controls">
                 <div className="search-box">
-                    <input type="text" placeholder="Tìm học sinh..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                    <input type="text" placeholder="🔍 Tìm học sinh..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                 </div>
                 <div className="filter-tabs">
                     <button className={filterStatus === "all" ? "active" : ""} onClick={() => setFilterStatus("all")}>Tất cả</button>
@@ -126,7 +126,7 @@ export default function AttendancePage() {
                 </div>
             </div>
 
-            {/* DANH SÁCH HỌC SINH – HIỂN THỊ NGAY, KHÔNG CẦN SCROLL */}
+            {/* DANH SÁCH HỌC SINH */}
             <div className="student-list">
                 {filteredStudents.map(s => (
                     <div key={s.hocSinhId} className={`student-row ${s.attendance.loanDon ? "picked" : ""} ${s.attendance.loanTra ? "dropped" : ""}`}>
@@ -135,18 +135,18 @@ export default function AttendancePage() {
                             <div className="info">
                                 <div className="name">{s.hoTen} <span className="code">{s.maHS}</span></div>
                                 <div className="details">{s.lop} • {s.diemDon}</div>
-                                {s.attendance.ghiChu && <div className="note-tag">Note: {s.attendance.ghiChu}</div>}
+                                {s.attendance.ghiChu && <div className="note-tag">📝 {s.attendance.ghiChu}</div>}
                             </div>
                         </div>
 
                         <div className="student-actions">
                             <button className={`act pickup ${s.attendance.loanDon ? "done" : ""}`} onClick={() => handleMarkPickup(s.hocSinhId)}>
-                                {s.attendance.loanDon ? `Check ${formatTime(s.attendance.thoiGianDon)}` : "Pickup"}
+                                {s.attendance.loanDon ? `✓ ${formatTime(s.attendance.thoiGianDon)}` : "Pickup"}
                             </button>
                             <button className={`act dropoff ${s.attendance.loanTra ? "done" : ""}`} onClick={() => handleMarkDropoff(s.hocSinhId)} disabled={!s.attendance.loanDon}>
-                                {s.attendance.loanTra ? `Check ${formatTime(s.attendance.thoiGianTra)}` : "Drop"}
+                                {s.attendance.loanTra ? `✓ ${formatTime(s.attendance.thoiGianTra)}` : "Drop"}
                             </button>
-                            <button className="act note" onClick={() => openNote(s)}>Note</button>
+                            <button className="act note" onClick={() => openNote(s)}>📝</button>
                         </div>
                     </div>
                 ))}

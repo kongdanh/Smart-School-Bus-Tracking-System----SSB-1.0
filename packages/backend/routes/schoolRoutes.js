@@ -1,12 +1,11 @@
-// backend/routes/schoolRoutes.js
 const express = require('express');
 const router = express.Router();
-const schoolController = require('../controller/schoolController');
-const { verifyToken, checkRole } = require('../middleware/authMiddleware');
+const schoolController = require('../controllers/schoolController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Áp dụng middleware cho tất cả routes
-router.use(verifyToken);
-router.use(checkRole('school'));
+router.use(protect);
+router.use(authorize('school'));
 
 // ==================== DASHBOARD ====================
 router.get('/dashboard', schoolController.getDashboard);

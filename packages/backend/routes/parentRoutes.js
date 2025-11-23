@@ -1,13 +1,10 @@
-// ============================================
-// backend/routes/parentRoutes.js
-// ============================================
 const express = require('express');
 const router = express.Router();
-const parentController = require('../controller/parentController');
-const { verifyToken, checkRole } = require('../middleware/authMiddleware');
+const parentController = require('../controllers/parentController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
-router.use(verifyToken);
-router.use(checkRole('parent')); // Chỉ parent mới truy cập
+router.use(protect);
+router.use(authorize('parent')); // Chỉ parent mới truy cập
 
 router.get('/me', parentController.getCurrentParent);
 router.get('/children', parentController.getMyChildren);

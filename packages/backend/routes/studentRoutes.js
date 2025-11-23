@@ -1,20 +1,17 @@
-// ============================================
-// backend/routes/studentRoutes.js
-// ============================================
 const express = require('express');
 const router = express.Router();
-const studentController = require('../controller/studentController');
-const { verifyToken, checkRole } = require('../middleware/authMiddleware');
+const studentController = require('../controllers/studentController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
-router.use(verifyToken);
+router.use(protect);
 
 router.get('/', studentController.getAllStudents);
 router.get('/:id', studentController.getStudentById);
 router.get('/parent/:parentId', studentController.getStudentsByParent);
 
 // Chỉ school mới được thêm/sửa/xóa
-router.post('/', checkRole('school'), studentController.createStudent);
-router.put('/:id', checkRole('school'), studentController.updateStudent);
-router.delete('/:id', checkRole('school'), studentController.deleteStudent);
+router.post('/', authorize('school'), studentController.createStudent);
+router.put('/:id', authorize('school'), studentController.updateStudent);
+router.delete('/:id', authorize('school'), studentController.deleteStudent);
 
 module.exports = router;
