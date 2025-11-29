@@ -3,14 +3,14 @@ const router = express.Router();
 const parentController = require('../controllers/parentController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
+// Bảo vệ routes, chỉ cho phép Parent
 router.use(protect);
-router.use(authorize('parent')); // Chỉ parent mới truy cập
+router.use(authorize('parent'));
 
-router.get('/me', parentController.getCurrentParent);
+// Lấy danh sách con
 router.get('/children', parentController.getMyChildren);
-router.get('/children/:studentId/bus-location', parentController.getChildBusLocation);
-router.get('/children/:studentId/schedule', parentController.getChildSchedule);
-router.get('/notifications', parentController.getNotifications);
-router.put('/notifications/:notificationId/read', parentController.markNotificationAsRead);
+
+// Lấy vị trí xe của con (Tracking)
+router.get('/tracking/:hocSinhId', parentController.getChildBusLocation);
 
 module.exports = router;

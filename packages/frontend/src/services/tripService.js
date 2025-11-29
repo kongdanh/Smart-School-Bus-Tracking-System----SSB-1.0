@@ -1,20 +1,55 @@
-// frontend/services/tripService.js
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Đảm bảo file .env của bạn có biến VITE_API_BASE_URL=http://localhost:5000/api
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+const axiosInstance = axios.create({
+    baseURL: `${API_URL}/trip`, // Base URL trỏ vào route trip
+    timeout: 15000,
+    headers: { 'Content-Type': 'application/json' }
+});
+
+// Request interceptor - Tự động thêm Token từ localStorage
+axiosInstance.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// Response interceptor - Xử lý lỗi 401 (Token hết hạn)
+axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
 
 const tripService = {
-    // Bắt đầu chuyến xe
+    // Lấy thông tin Dashboard (Driver info + Bus info + Lịch trình hôm nay)
+    // Gọi vào route /current ở backend
+    getDriverDashboard: async () => {
+        try {
+            const response = await axiosInstance.get('/current');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching dashboard:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Bắt đầu chuyến xe (Check In)
     startTrip: async (lichTrinhId) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post(
-                `${API_URL}/trip/start`,
-                { lichTrinhId },
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.post('/start', { lichTrinhId });
             return response.data;
         } catch (error) {
             console.error('Error starting trip:', error);
@@ -22,17 +57,13 @@ const tripService = {
         }
     },
 
-    // Kết thúc chuyến xe
+    // Kết thúc chuyến xe (Check Out)
     endTrip: async (tripRecordId, soKmDiDuoc) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post(
-                `${API_URL}/trip/end`,
-                { tripRecordId, soKmDiDuoc },
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.post('/end', {
+                tripRecordId,
+                soKmDiDuoc
+            });
             return response.data;
         } catch (error) {
             console.error('Error ending trip:', error);
@@ -43,14 +74,10 @@ const tripService = {
     // Báo cáo sự cố
     reportIncident: async (tripRecordId, moTaSuCo) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post(
-                `${API_URL}/trip/incident`,
-                { tripRecordId, moTaSuCo },
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.post('/incident', {
+                tripRecordId,
+                moTaSuCo
+            });
             return response.data;
         } catch (error) {
             console.error('Error reporting incident:', error);
@@ -58,72 +85,15 @@ const tripService = {
         }
     },
 
-    // Cập nhật số km đã đi
-    updateDistance: async (tripRecordId, soKmDiDuoc) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.put(
-                `${API_URL}/trip/distance`,
-                { tripRecordId, soKmDiDuoc },
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error updating distance:', error);
-            throw error.response?.data || error;
-        }
-    },
-
-    // Lấy chuyến xe hiện tại
-    getCurrentTrip: async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/trip/current`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error getting current trip:', error);
-            throw error.response?.data || error;
-        }
-    },
-
     // Lấy lịch sử chuyến xe
     getTripHistory: async (page = 1, limit = 10) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/trip/history`,
-                {
-                    params: { page, limit },
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.get('/history', {
+                params: { page, limit }
+            });
             return response.data;
         } catch (error) {
             console.error('Error getting trip history:', error);
-            throw error.response?.data || error;
-        }
-    },
-
-    // Lấy chi tiết chuyến xe
-    getTripDetail: async (tripRecordId) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/trip/${tripRecordId}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error getting trip detail:', error);
             throw error.response?.data || error;
         }
     }

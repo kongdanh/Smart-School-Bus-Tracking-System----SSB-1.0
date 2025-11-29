@@ -1,91 +1,71 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import "../../styles/driver-styles/driver-checkInOut..css";
+import tripService from "../../services/tripService";
+import "../../styles/driver-styles/driver-checkInOut..css"; // Giữ file CSS cũ của bạn
 import {
-    User, Bus, Clock, MapPin, CheckCircle, XCircle,
+    User, Bus, Clock, MapPin, CheckCircle,
     Fuel, Gauge, Lightbulb, Eye, Sofa, HeartPulse,
-    Siren, DoorOpen, AlertCircle, LogIn, LogOut,
-    Power, PlayCircle  // THÊM 2 CÁI NÀY VÀO
+    Siren, DoorOpen, Power, LogIn, LogOut
 } from "lucide-react";
 
-// Mock data - giữ nguyên 100%
-const mockDriver = {
-    taiXeId: 1,
-    hoTen: "Nguyễn Văn An",
-    bienSoCapphep: "B2-12345-VN",
-    gioHeBay: 4.8,
-    soChuyenHT: 156
-};
-
-const mockBus = {
-    xeBuytId: 1,
-    maXe: "BUS001",
-    bienSo: "51A-12345",
-    sucChua: 45,
-    trangThai: "active",
-    namSanXuat: 2020
-};
-
-const mockScheduleToday = [
-    {
-        lichTrinhId: 1,
-        maLich: "SCH001",
-        gioKhoiHanh: "06:30",
-        gioKetThuc: "08:00",
-        tuyenDuong: { tenTuyen: "Tuyến 1: Quận 1 - Quận 7" },
-        trangThai: "scheduled"
-    },
-    {
-        lichTrinhId: 2,
-        maLich: "SCH002",
-        gioKhoiHanh: "14:00",
-        gioKetThuc: "15:30",
-        tuyenDuong: { tenTuyen: "Tuyến 1: Quận 7 - Quận 1" },
-        trangThai: "scheduled"
-    }
-];
-
 export default function CheckInOut() {
-    const navigate = useNavigate();
+    // State chứa dữ liệu thật từ API
+    const [driver, setDriver] = useState(null);
+    const [bus, setBus] = useState(null);
+    const [schedules, setSchedules] = useState([]);
+
+    // State quản lý trạng thái UI
+    const [loading, setLoading] = useState(true);
     const [isCheckedIn, setIsCheckedIn] = useState(false);
+
+    // Quản lý ID để gọi API
+    const [currentTripId, setCurrentTripId] = useState(null); // ID Lịch trình đang chạy
+    const [tripRecordId, setTripRecordId] = useState(null);   // ID Record chuyến đi (để End Trip)
     const [checkInTime, setCheckInTime] = useState(null);
-    const [checkOutTime, setCheckOutTime] = useState(null);
-    const [currentLocation, setCurrentLocation] = useState({ lat: null, lng: null });
-    const [preCheckList, setPreCheckList] = useState({
-        fuelLevel: false,
-        tiresCondition: false,
-        lightsWorking: false,
-        mirrorsAdjusted: false,
-        cleanInterior: false,
-        firstAidKit: false,
-        fireExtinguisher: false,
-        emergencyExit: false
-    });
+
+    // State cho Form
     const [notes, setNotes] = useState("");
-    const [loading, setLoading] = useState(false);
+    const [preCheckList, setPreCheckList] = useState({
+        fuelLevel: false, tiresCondition: false, lightsWorking: false,
+        mirrorsAdjusted: false, cleanInterior: false, firstAidKit: false,
+        fireExtinguisher: false, emergencyExit: false
+    });
 
+    // 1. Fetch Data ngay khi component được load
     useEffect(() => {
-        const checkedIn = localStorage.getItem("driverCheckedIn");
-        const checkInData = localStorage.getItem("checkInTime");
-
-        if (checkedIn === "true" && checkInData) {
-            setIsCheckedIn(true);
-            setCheckInTime(new Date(checkInData));
-        }
-
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setCurrentLocation({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    });
-                },
-                (error) => console.error("Lỗi lấy vị trí:", error)
-            );
-        }
+        fetchDashboardData();
     }, []);
+
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+            const res = await tripService.getDriverDashboard();
+
+            if (res.success) {
+                const { driver, bus, schedules, currentTrip, tripRecordId } = res.data;
+
+                setDriver(driver);
+                setBus(bus);
+                setSchedules(schedules || []);
+
+                // Nếu Backend trả về đang có chuyến 'in_progress' -> Tự động chuyển UI sang trạng thái Đã Check In
+                if (currentTrip) {
+                    setIsCheckedIn(true);
+                    setCurrentTripId(currentTrip.lichTrinhId);
+                    setTripRecordId(tripRecordId);
+                    // Lấy giờ khởi hành làm giờ check-in (hoặc giờ hiện tại nếu null)
+                    setCheckInTime(currentTrip.tripRecords[0]?.thoiGianKD || new Date());
+                } else {
+                    setIsCheckedIn(false);
+                }
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Không thể tải thông tin tài xế! Vui lòng thử lại.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleCheckListChange = (key) => {
         setPreCheckList(prev => ({ ...prev, [key]: !prev[key] }));
@@ -93,308 +73,211 @@ export default function CheckInOut() {
 
     const allChecksCompleted = () => Object.values(preCheckList).every(v => v);
 
+    // 2. Xử lý logic VÀO CA (Start Trip)
     const handleCheckIn = async () => {
         if (!allChecksCompleted()) {
-            toast.warning("Vui lòng hoàn thành tất cả kiểm tra trước khi điểm danh!", {
-                position: "bottom-right"
-            });
-            return;
+            return toast.warning("Vui lòng hoàn thành tất cả mục kiểm tra an toàn trước!");
         }
 
-        setLoading(true);
-        setTimeout(() => {
-            const now = new Date();
-            setIsCheckedIn(true);
-            setCheckInTime(now);
-            localStorage.setItem("driverCheckedIn", "true");
-            localStorage.setItem("checkInTime", now.toISOString());
+        // Tìm chuyến xe tiếp theo (trạng thái 'scheduled') để bắt đầu
+        // MVP: Tạm thời lấy chuyến scheduled đầu tiên trong danh sách
+        const nextTrip = schedules.find(s => s.trangThai === 'scheduled');
 
-            toast.success("Điểm danh vào ca thành công! Chúc chuyến đi an toàn!", {
-                position: "bottom-right",
-                autoClose: 3000
-            });
+        if (!nextTrip) {
+            return toast.error("Hôm nay bạn không còn lịch trình nào cần chạy!");
+        }
+
+        try {
+            setLoading(true);
+            // Gọi API Start Trip
+            const res = await tripService.startTrip(nextTrip.lichTrinhId);
+
+            if (res.success) {
+                toast.success("Đã vào ca & Bắt đầu chuyến xe thành công!");
+                setIsCheckedIn(true);
+                setCheckInTime(new Date());
+                setTripRecordId(res.data.tripRecordId);
+                setCurrentTripId(nextTrip.lichTrinhId);
+
+                // Refresh lại data để cập nhật trạng thái UI chính xác
+                fetchDashboardData();
+            }
+        } catch (error) {
+            toast.error(error.message || "Lỗi khi vào ca");
+        } finally {
             setLoading(false);
-        }, 1500);
+        }
     };
 
+    // 3. Xử lý logic RA CA (End Trip)
     const handleCheckOut = async () => {
         if (!notes.trim()) {
-            toast.warning("Vui lòng nhập ghi chú cuối ca trước khi điểm danh ra!", {
-                position: "bottom-right"
-            });
-            return;
+            return toast.warning("Vui lòng nhập ghi chú hoặc số KM xe trước khi ra ca!");
         }
 
-        setLoading(true);
-        setTimeout(() => {
-            const now = new Date();
-            setIsCheckedIn(false);
-            setCheckOutTime(now);
-            localStorage.removeItem("driverCheckedIn");
-            localStorage.removeItem("checkInTime");
+        if (!tripRecordId) {
+            return toast.error("Không tìm thấy thông tin chuyến đi để kết thúc!");
+        }
 
-            toast.success("Điểm danh ra ca thành công! Cảm ơn bạn đã làm việc hôm nay!", {
-                position: "bottom-right",
-                autoClose: 3000
-            });
+        try {
+            setLoading(true);
+            // Gọi API End Trip
+            // Lưu ý: MVP này đang dùng field 'notes' làm nơi nhập liệu check-out chung
+            // Bạn có thể parse số km từ notes hoặc thêm input riêng nếu muốn
+            const kmExample = 0; // Tạm để 0 hoặc lấy từ input người dùng
 
-            setPreCheckList({
-                fuelLevel: false, tiresCondition: false, lightsWorking: false,
-                mirrorsAdjusted: false, cleanInterior: false, firstAidKit: false,
-                fireExtinguisher: false, emergencyExit: false
-            });
-            setNotes("");
+            const res = await tripService.endTrip(tripRecordId, kmExample);
+
+            if (res.success) {
+                toast.success("Đã kết thúc chuyến xe & Ra ca thành công!");
+                setIsCheckedIn(false);
+                setNotes("");
+                setPreCheckList({
+                    fuelLevel: false, tiresCondition: false, lightsWorking: false,
+                    mirrorsAdjusted: false, cleanInterior: false, firstAidKit: false,
+                    fireExtinguisher: false, emergencyExit: false
+                });
+
+                // Refresh data
+                fetchDashboardData();
+            }
+        } catch (error) {
+            toast.error(error.message || "Lỗi khi ra ca");
+        } finally {
             setLoading(false);
-        }, 1500);
+        }
     };
 
-    const formatTime = (date) => {
-        if (!date) return "";
-        return new Date(date).toLocaleTimeString('vi-VN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
+    const formatTime = (dateStr) => {
+        if (!dateStr) return "--:--";
+        return new Date(dateStr).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     };
 
-    const calculateWorkingHours = () => {
-        if (!checkInTime) return "0g 0p";
-        const diff = new Date() - new Date(checkInTime);
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        return `${hours}g ${minutes}p`;
-    };
+    if (loading && !driver) return <div className="loading-screen">Đang tải dữ liệu...</div>;
 
     return (
         <div className="checkin-container">
-            {/* ĐÃ XÓA NÚT BACK - CHỈ GIỮ TIÊU ĐỀ */}
             <div className="checkin-header">
                 <div className="header-content">
-                    <h1>Điểm Danh Vào / Ra Ca</h1>
-                    <p>Quản lý chấm công hàng ngày và kiểm tra xe trước khi chạy</p>
+                    <h1>Điểm Danh & Quản Lý Chuyến</h1>
+                    <p>Chào tài xế {driver?.hoTen}, chúc bạn thượng lộ bình an!</p>
                 </div>
             </div>
 
-            {/* Trạng thái hiện tại - ĐÃ TỐI ƯU HOÀN CHỈNH */}
+            {/* CARD TRẠNG THÁI */}
             <div className={`status-card ${isCheckedIn ? 'checked-in' : 'checked-out'}`}>
                 <div className="status-main">
-                    {/* Vòng tròn + icon trạng thái */}
                     <div className="pulse-circle">
-                        {isCheckedIn ? (
-                            <Clock size={32} strokeWidth={2.5} />
-                        ) : (
-                            <Power size={32} strokeWidth={2.5} />
-                        )}
+                        {isCheckedIn ? <Clock size={32} /> : <Power size={32} />}
                     </div>
-
-                    {/* Thông tin trạng thái */}
                     <div className="status-main-info">
-                        <h3>{isCheckedIn ? 'Đang trong ca làm việc' : 'Nghỉ ca'}</h3>
+                        <h3>{isCheckedIn ? 'Đang thực hiện lộ trình' : 'Xe đang nghỉ'}</h3>
                         {isCheckedIn ? (
                             <div className="working-info">
-                                <p>Đã vào ca lúc: <strong>{formatTime(checkInTime)}</strong></p>
-                                <p className="working-hours">Thời gian làm việc: {calculateWorkingHours()}</p>
+                                <p>Bắt đầu lúc: <strong>{formatTime(checkInTime)}</strong></p>
+                                <p className="working-hours">
+                                    Tuyến: {schedules.find(s => s.lichTrinhId === currentTripId)?.tuyenduong?.tenTuyen || "Không xác định"}
+                                </p>
                             </div>
                         ) : (
-                            <p className="ready-text">Sẵn sàng bắt đầu ca làm việc</p>
+                            <p className="ready-text">Vui lòng kiểm tra xe trước khi khởi hành</p>
                         )}
                     </div>
                 </div>
-
-                {/* Nút chọn loại nghỉ ca - CHỈ HIỆN KHI ĐANG TRONG CA */}
-                {isCheckedIn && (
-                    <div className="break-selector">
-                        <select
-                            className="break-dropdown"
-                            defaultValue=""
-                            onChange={(e) => {
-                                if (e.target.value) {
-                                    toast.info(`Đã chọn: ${e.target.value}`, { autoClose: 2000 });
-                                    // Sau này có thể gửi API ghi nhận nghỉ ca
-                                }
-                            }}
-                        >
-                            <option value="" disabled>Chọn loại nghỉ ca</option>
-                            <option value="Nghỉ trưa">Nghỉ trưa (30-60 phút)</option>
-                            <option value="Nghỉ giải lao">Nghỉ giải lao ngắn</option>
-                            <option value="Nghỉ giữa ca">Nghỉ giữa ca</option>
-                            <option value="Nghỉ kỹ thuật">Nghỉ kỹ thuật / đổ xăng</option>
-                            <option value="Nghỉ cá nhân">Nghỉ cá nhân</option>
-                        </select>
-                    </div>
-                )}
-
-                {/* Badge theo dõi vị trí */}
                 {isCheckedIn && (
                     <div className="location-badge">
-                        <MapPin size={18} />
-                        <span>Đang theo dõi vị trí</span>
+                        <MapPin size={18} /><span>GPS Đang Bật</span>
                     </div>
                 )}
             </div>
 
             <div className="checkin-content">
-                {/* Thông tin tài xế & xe */}
                 <div className="info-section">
+                    {/* THÔNG TIN TÀI XẾ */}
                     <div className="driver-card">
-                        <div className="card-header">
-                            <User size={24} />
-                            <h3>Thông tin tài xế</h3>
-                        </div>
+                        <div className="card-header"><User size={24} /><h3>Tài xế</h3></div>
                         <div className="info-grid">
-                            <div className="info-item">
-                                <span className="label">Họ tên:</span>
-                                <span className="value">{mockDriver.hoTen}</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="label">Bằng lái:</span>
-                                <span className="value">{mockDriver.bienSoCapphep}</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="label">Đánh giá:</span>
-                                <span className="value">⭐ {mockDriver.gioHeBay}/5.0</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="label">Chuyến đã hoàn thành:</span>
-                                <span className="value">{mockDriver.soChuyenHT}</span>
-                            </div>
+                            <div className="info-item"><span className="label">Họ tên:</span><span className="value">{driver?.hoTen || "N/A"}</span></div>
+                            <div className="info-item"><span className="label">Bằng lái:</span><span className="value">{driver?.bienSoCapphep || "N/A"}</span></div>
+                            <div className="info-item"><span className="label">Đánh giá:</span><span className="value">⭐ {driver?.gioHeBay || 5.0}/5.0</span></div>
                         </div>
                     </div>
 
+                    {/* THÔNG TIN XE BUÝT */}
                     <div className="bus-card">
-                        <div className="card-header">
-                            <Bus size={24} />
-                            <h3>Thông tin xe buýt</h3>
-                        </div>
+                        <div className="card-header"><Bus size={24} /><h3>Xe Buýt</h3></div>
                         <div className="info-grid">
-                            <div className="info-item">
-                                <span className="label">Mã xe:</span>
-                                <span className="value">{mockBus.maXe}</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="label">Biển số:</span>
-                                <span className="value">{mockBus.bienSo}</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="label">Sức chứa:</span>
-                                <span className="value">{mockBus.sucChua} chỗ ngồi</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="label">Năm sản xuất:</span>
-                                <span className="value">{mockBus.namSanXuat}</span>
-                            </div>
+                            <div className="info-item"><span className="label">Mã xe:</span><span className="value">{bus?.maXe || "Chưa gán"}</span></div>
+                            <div className="info-item"><span className="label">Biển số:</span><span className="value">{bus?.bienSo || "N/A"}</span></div>
+                            <div className="info-item"><span className="label">Sức chứa:</span><span className="value">{bus?.sucChua || 0} chỗ</span></div>
                         </div>
                     </div>
                 </div>
 
-                {/* Lịch trình hôm nay */}
+                {/* DANH SÁCH LỊCH TRÌNH */}
                 <div className="schedule-preview">
-                    <h3>Lịch trình hôm nay</h3>
+                    <h3>Lịch trình hôm nay ({new Date().toLocaleDateString('vi-VN')})</h3>
                     <div className="schedule-list">
-                        {mockScheduleToday.map((schedule) => (
-                            <div key={schedule.lichTrinhId} className="schedule-item">
-                                <div className="time-badge">{schedule.gioKhoiHanh}</div>
-                                <div className="schedule-info">
-                                    <h4>{schedule.tuyenDuong.tenTuyen}</h4>
-                                    <p>{schedule.gioKhoiHanh} - {schedule.gioKetThuc}</p>
+                        {schedules.length === 0 ? <p className="no-data">Hôm nay không có lịch trình nào.</p> :
+                            schedules.map((sch) => (
+                                <div key={sch.lichTrinhId} className={`schedule-item ${sch.trangThai}`}>
+                                    <div className="time-badge">{formatTime(sch.gioKhoiHanh)}</div>
+                                    <div className="schedule-info">
+                                        <h4>{sch.tuyenduong?.tenTuyen}</h4>
+                                        <p>
+                                            Trạng thái:
+                                            <span className={`status-label ${sch.trangThai}`}>
+                                                {sch.trangThai === 'in_progress' ? ' Đang chạy' :
+                                                    (sch.trangThai === 'completed' ? ' Hoàn thành' : ' Chưa chạy')}
+                                            </span>
+                                        </p>
+                                    </div>
                                 </div>
-                                <span className={`status-badge ${schedule.trangThai}`}>
-                                    Đã lên lịch
-                                </span>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 </div>
 
-                {/* Kiểm tra trước ca hoặc ghi chú cuối ca */}
+                {/* FORM CHECK IN / OUT */}
                 {!isCheckedIn ? (
                     <div className="checklist-section">
-                        <h3>Kiểm tra xe trước khi xuất phát</h3>
-                        <p className="section-subtitle">Hoàn thành tất cả mục kiểm tra trước khi bắt đầu ca</p>
-
+                        <h3>Kiểm tra an toàn trước khi chạy</h3>
                         <div className="checklist">
                             {[
-                                { key: 'fuelLevel', icon: Fuel, label: 'Mức nhiên liệu đủ (trên 1/4 bình)' },
-                                { key: 'tiresCondition', icon: Gauge, label: 'Lốp xe đủ áp suất và không hư hỏng' },
-                                { key: 'lightsWorking', icon: Lightbulb, label: 'Tất cả đèn hoạt động bình thường' },
-                                { key: 'mirrorsAdjusted', icon: Eye, label: 'Gương chiếu hậu sạch và điều chỉnh đúng' },
-                                { key: 'cleanInterior', icon: Sofa, label: 'Nội thất xe sạch sẽ, gọn gàng' },
-                                { key: 'firstAidKit', icon: HeartPulse, label: 'Hộp sơ cứu đầy đủ và còn hạn' },
-                                { key: 'fireExtinguisher', icon: Siren, label: 'Bình chữa cháy dễ tiếp cận và còn hạn' },
-                                { key: 'emergencyExit', icon: DoorOpen, label: 'Lối thoát hiểm thông thoáng và hoạt động tốt' }
+                                { key: 'fuelLevel', icon: Fuel, label: 'Nhiên liệu đủ (>1/4 bình)' },
+                                { key: 'tiresCondition', icon: Gauge, label: 'Áp suất lốp ổn định' },
+                                { key: 'lightsWorking', icon: Lightbulb, label: 'Đèn tín hiệu hoạt động' },
+                                { key: 'mirrorsAdjusted', icon: Eye, label: 'Gương chiếu hậu chuẩn' },
+                                { key: 'cleanInterior', icon: Sofa, label: 'Nội thất sạch sẽ' },
+                                { key: 'firstAidKit', icon: HeartPulse, label: 'Có hộp sơ cứu' },
+                                { key: 'fireExtinguisher', icon: Siren, label: 'Có bình chữa cháy' },
+                                { key: 'emergencyExit', icon: DoorOpen, label: 'Lối thoát hiểm thoáng' }
                             ].map(item => (
                                 <label key={item.key} className="checkbox-item">
-                                    <input
-                                        type="checkbox"
-                                        checked={preCheckList[item.key]}
-                                        onChange={() => handleCheckListChange(item.key)}
-                                    />
-                                    <span className="checkmark">
-                                        {preCheckList[item.key] && <CheckCircle size={16} />}
-                                    </span>
+                                    <input type="checkbox" checked={preCheckList[item.key]} onChange={() => handleCheckListChange(item.key)} />
+                                    <span className="checkmark">{preCheckList[item.key] && <CheckCircle size={16} />}</span>
                                     <item.icon size={20} className="check-icon" />
                                     <span className="label-text">{item.label}</span>
                                 </label>
                             ))}
                         </div>
-
-                        <div className="progress-bar">
-                            <div
-                                className="progress-fill"
-                                style={{
-                                    width: `${(Object.values(preCheckList).filter(v => v).length / 8) * 100}%`
-                                }}
-                            ></div>
-                        </div>
-                        <p className="progress-text">
-                            {Object.values(preCheckList).filter(v => v).length} / 8 mục đã hoàn thành
-                        </p>
-
-                        <button
-                            className="btn-checkin"
-                            onClick={handleCheckIn}
-                            disabled={!allChecksCompleted() || loading}
-                        >
-                            {loading ? (
-                                <>Đang xử lý...</>
-                            ) : (
-                                <>
-                                    <LogIn size={20} />
-                                    Điểm danh vào ca
-                                </>
-                            )}
+                        <button className="btn-checkin" onClick={handleCheckIn} disabled={loading}>
+                            {loading ? "Đang xử lý..." : <><LogIn size={20} /> VÀO CA & BẮT ĐẦU</>}
                         </button>
                     </div>
                 ) : (
                     <div className="notes-section">
-                        <h3>Báo cáo cuối ca</h3>
-                        <p className="section-subtitle">Ghi chú về tình hình chuyến đi trước khi ra ca</p>
-
+                        <h3>Kết thúc chuyến xe & Ra ca</h3>
                         <div className="form-group">
-                            <label>Tóm tắt chuyến đi & Ghi chú</label>
+                            <label>Ghi chú chuyến đi / Sự cố (nếu có)</label>
                             <textarea
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
-                                placeholder="Ví dụ: Tất cả chuyến đi đúng giờ. Không có sự cố. Xe hoạt động tốt. Đã đổ xăng lúc 15h."
-                                rows="6"
-                                maxLength="500"
+                                placeholder="Nhập ghi chú hoặc số km xe..."
+                                rows="4"
                             ></textarea>
-                            <span className="char-count">{notes.length} / 500 ký tự</span>
                         </div>
-
-                        <button
-                            className="btn-checkout"
-                            onClick={handleCheckOut}
-                            disabled={!notes.trim() || loading}
-                        >
-                            {loading ? (
-                                <>Đang xử lý...</>
-                            ) : (
-                                <>
-                                    <LogOut size={20} />
-                                    Điểm danh ra ca
-                                </>
-                            )}
+                        <button className="btn-checkout" onClick={handleCheckOut} disabled={loading}>
+                            {loading ? "Đang xử lý..." : <><LogOut size={20} /> KẾT THÚC & RA CA</>}
                         </button>
                     </div>
                 )}

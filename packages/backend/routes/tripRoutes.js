@@ -19,8 +19,9 @@ router.post('/incident', tripController.reportIncident);
 // Cập nhật số km
 router.put('/distance', tripController.updateDistance);
 
-// Lấy chuyến xe hiện tại
-router.get('/current', tripController.getCurrentTrip);
+// Lấy Dashboard tài xế (Thông tin + Chuyến hiện tại + Lịch trình)
+// Đã đổi từ getCurrentTrip thành getDriverDashboard
+router.get('/current', tripController.getDriverDashboard);
 
 // Lấy lịch sử chuyến xe
 router.get('/history', tripController.getTripHistory);

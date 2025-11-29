@@ -1,8 +1,7 @@
-// backend/controllers/tripController.js
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Bắt đầu chuyến xe
+// Bắt đầu chuyến xe (Tương ứng hành động Check-in Vào Ca)
 exports.startTrip = async (req, res) => {
     try {
         const { lichTrinhId } = req.body;
@@ -44,7 +43,7 @@ exports.startTrip = async (req, res) => {
     }
 };
 
-// Kết thúc chuyến xe
+// Kết thúc chuyến xe (Tương ứng hành động Check-out Ra Ca)
 exports.endTrip = async (req, res) => {
     try {
         const { tripRecordId, soKmDiDuoc } = req.body;
@@ -116,14 +115,6 @@ exports.reportIncident = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
         }
 
-        const tripRecord = await prisma.tripRecord.findUnique({
-            where: { tripRecordId: parseInt(tripRecordId) }
-        });
-
-        if (!tripRecord || tripRecord.taiXeId !== taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-        }
-
         const updatedTrip = await prisma.tripRecord.update({
             where: { tripRecordId: parseInt(tripRecordId) },
             data: {
@@ -140,8 +131,9 @@ exports.reportIncident = async (req, res) => {
     }
 };
 
-// Lấy chuyến xe hiện tại của tài xế
-exports.getCurrentTrip = async (req, res) => {
+// Lấy Dashboard cho Tài xế (Thay thế getCurrentTrip cũ)
+// Hàm này trả về: Info tài xế, Info xe, Lịch trình hôm nay, và Chuyến đang chạy (nếu có)
+exports.getDriverDashboard = async (req, res) => {
     try {
         const taiXeId = req.user.taixe?.taiXeId;
 
@@ -149,45 +141,57 @@ exports.getCurrentTrip = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
         }
 
-        // Tìm chuyến xe đang in_progress
-        const currentSchedule = await prisma.lichtrinh.findFirst({
+        // 1. Lấy thông tin tài xế
+        const driverInfo = await prisma.taixe.findUnique({
+            where: { taiXeId: taiXeId },
+            include: { user: { select: { avatar: true, email: true } } }
+        });
+
+        // 2. Lấy tất cả lịch trình HÔM NAY của tài xế
+        const today = new Date();
+        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+        const todaySchedules = await prisma.lichtrinh.findMany({
             where: {
                 taiXeId: taiXeId,
-                trangThai: 'in_progress',
                 ngay: {
-                    equals: new Date(new Date().setHours(0, 0, 0, 0))
+                    gte: startOfDay,
+                    lte: endOfDay
                 }
             },
             include: {
                 tuyenduong: true,
                 xebuyt: true,
                 tripRecords: {
-                    where: {
-                        taiXeId: taiXeId,
-                        thoiGianKT: null
-                    },
-                    orderBy: {
-                        thoiGianKD: 'desc'
-                    },
-                    take: 1
+                    where: { taiXeId: taiXeId }
                 }
-            }
+            },
+            orderBy: { gioKhoiHanh: 'asc' }
         });
 
-        if (!currentSchedule) {
-            return res.json({ success: true, data: null });
-        }
+        // 3. Tìm chuyến đang chạy (in_progress) để UI biết mà hiển thị trạng thái "Đã Check-in"
+        const currentTrip = todaySchedules.find(s => s.trangThai === 'in_progress');
+
+        // 4. Lấy thông tin xe (ưu tiên từ chuyến đang chạy, nếu không thì lấy từ chuyến đầu tiên trong ngày)
+        const busInfo = currentTrip?.xebuyt || (todaySchedules.length > 0 ? todaySchedules[0].xebuyt : null);
 
         res.json({
             success: true,
             data: {
-                schedule: currentSchedule,
-                tripRecord: currentSchedule.tripRecords[0] || null
+                driver: driverInfo,
+                bus: busInfo,
+                schedules: todaySchedules,
+                currentTrip: currentTrip || null,
+                // Nếu đang chạy thì trả về ID bản ghi để lúc End Trip biết cái nào mà update
+                tripRecordId: currentTrip && currentTrip.tripRecords.length > 0
+                    ? currentTrip.tripRecords[0].tripRecordId
+                    : null
             }
         });
 
     } catch (error) {
-        console.error('Error getting current trip:', error);
+        console.error('Error getting driver dashboard:', error);
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
@@ -251,10 +255,6 @@ exports.getTripDetail = async (req, res) => {
         const { tripRecordId } = req.params;
         const taiXeId = req.user.taixe?.taiXeId;
 
-        if (!taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-        }
-
         const trip = await prisma.tripRecord.findUnique({
             where: { tripRecordId: parseInt(tripRecordId) },
             include: {
@@ -288,31 +288,12 @@ exports.getTripDetail = async (req, res) => {
 exports.updateDistance = async (req, res) => {
     try {
         const { tripRecordId, soKmDiDuoc } = req.body;
-        const taiXeId = req.user.taixe?.taiXeId;
-
-        if (!taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-        }
-
-        const trip = await prisma.tripRecord.findUnique({
-            where: { tripRecordId: parseInt(tripRecordId) }
-        });
-
-        if (!trip || trip.taiXeId !== taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-        }
-
         const updatedTrip = await prisma.tripRecord.update({
             where: { tripRecordId: parseInt(tripRecordId) },
-            data: {
-                soKmDiDuoc: parseFloat(soKmDiDuoc)
-            }
+            data: { soKmDiDuoc: parseFloat(soKmDiDuoc) }
         });
-
         res.json({ success: true, data: updatedTrip });
-
     } catch (error) {
-        console.error('Error updating distance:', error);
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };

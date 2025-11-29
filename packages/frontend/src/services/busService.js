@@ -1,19 +1,44 @@
-// frontend/services/busService.js
+// frontend/src/services/busService.js
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// ✅ Sửa: Dùng import.meta.env cho Vite
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const axiosInstance = axios.create({
+    baseURL: `${API_URL}/bus`,
+    timeout: 15000,
+    headers: { 'Content-Type': 'application/json' }
+});
+
+// Request interceptor
+axiosInstance.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// Response interceptor
+axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
 
 const busService = {
     // Lấy xe của tài xế hiện tại
     getMyBus: async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/bus/my-bus`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.get('/my-bus');
             return response.data;
         } catch (error) {
             console.error('Error getting my bus:', error);
@@ -24,14 +49,9 @@ const busService = {
     // Lấy danh sách tất cả xe (School Admin)
     getAllBuses: async (page = 1, limit = 10, search = '') => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/bus`,
-                {
-                    params: { page, limit, search },
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.get('/', {
+                params: { page, limit, search }
+            });
             return response.data;
         } catch (error) {
             console.error('Error getting all buses:', error);
@@ -42,13 +62,7 @@ const busService = {
     // Lấy chi tiết xe
     getBusDetail: async (xeBuytId) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/bus/${xeBuytId}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.get(`/${xeBuytId}`);
             return response.data;
         } catch (error) {
             console.error('Error getting bus detail:', error);
@@ -59,13 +73,7 @@ const busService = {
     // Lấy vị trí xe
     getBusLocation: async (xeBuytId) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/bus/${xeBuytId}/location`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.get(`/${xeBuytId}/location`);
             return response.data;
         } catch (error) {
             console.error('Error getting bus location:', error);
@@ -76,14 +84,11 @@ const busService = {
     // Cập nhật vị trí xe (Driver)
     updateBusLocation: async (xeBuytId, vido, kinhdo) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post(
-                `${API_URL}/bus/location`,
-                { xeBuytId, vido, kinhdo },
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.post('/location', {
+                xeBuytId,
+                vido,
+                kinhdo
+            });
             return response.data;
         } catch (error) {
             console.error('Error updating bus location:', error);
@@ -94,14 +99,7 @@ const busService = {
     // Tạo xe mới (School Admin)
     createBus: async (busData) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post(
-                `${API_URL}/bus`,
-                busData,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.post('/', busData);
             return response.data;
         } catch (error) {
             console.error('Error creating bus:', error);
@@ -112,14 +110,7 @@ const busService = {
     // Cập nhật thông tin xe (School Admin)
     updateBus: async (xeBuytId, busData) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.put(
-                `${API_URL}/bus/${xeBuytId}`,
-                busData,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.put(`/${xeBuytId}`, busData);
             return response.data;
         } catch (error) {
             console.error('Error updating bus:', error);
@@ -130,13 +121,7 @@ const busService = {
     // Xóa xe (School Admin)
     deleteBus: async (xeBuytId) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.delete(
-                `${API_URL}/bus/${xeBuytId}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.delete(`/${xeBuytId}`);
             return response.data;
         } catch (error) {
             console.error('Error deleting bus:', error);
@@ -147,16 +132,21 @@ const busService = {
     // Lấy thống kê xe (School Admin)
     getBusStats: async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(
-                `${API_URL}/bus/stats`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+            const response = await axiosInstance.get('/stats');
             return response.data;
         } catch (error) {
             console.error('Error getting bus stats:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Lấy học sinh trên xe
+    getBusStudents: async (xeBuytId) => {
+        try {
+            const response = await axiosInstance.get(`/${xeBuytId}/students`);
+            return response.data;
+        } catch (error) {
+            console.error('Error getting bus students:', error);
             throw error.response?.data || error;
         }
     }

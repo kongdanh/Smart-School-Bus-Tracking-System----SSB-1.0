@@ -1,104 +1,188 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import attendanceService from "../../services/attendanceService";
+import tripService from "../../services/tripService";
 import "../../styles/driver-styles/driver-attendance.css";
 
-const mockCurrentTrip = {
-    tuyenDuong: { tenTuyen: "Tuyến 1: Quận 1 - Quận 7" },
-    gioKhoiHanh: "06:30",
-    gioKetThuc: "08:00"
-};
-
-const mockStudents = [
-    { hocSinhId: 1, maHS: "HS001", hoTen: "Nguyễn Văn A", lop: "10A1", diemDon: "123 Đường ABC, Q.1", soDienThoaiPH: "0901234567", attendance: { loanDon: false, loanTra: false, thoiGianDon: null, thoiGianTra: null, ghiChu: "" } },
-    { hocSinhId: 2, maHS: "HS002", hoTen: "Trần Thị B", lop: "10A2", diemDon: "456 Đường DEF, Q.1", soDienThoaiPH: "0907654321", attendance: { loanDon: false, loanTra: false, thoiGianDon: null, thoiGianTra: null, ghiChu: "" } },
-    { hocSinhId: 3, maHS: "HS003", hoTen: "Lê Văn C", lop: "10B1", diemDon: "789 Đường GHI, Q.3", soDienThoaiPH: "0912345678", attendance: { loanDon: false, loanTra: false, thoiGianDon: null, thoiGianTra: null, ghiChu: "" } },
-    { hocSinhId: 4, maHS: "HS004", hoTen: "Phạm Thị D", lop: "10B2", diemDon: "321 Đường JKL, Q.5", soDienThoaiPH: "0987654321", attendance: { loanDon: false, loanTra: false, thoiGianDon: null, thoiGianTra: null, ghiChu: "" } },
-    { hocSinhId: 5, maHS: "HS005", hoTen: "Hoàng Văn E", lop: "11A1", diemDon: "654 Đường MNO, Q.7", soDienThoaiPH: "0923456789", attendance: { loanDon: false, loanTra: false, thoiGianDon: null, thoiGianTra: null, ghiChu: "" } },
-];
-
 export default function AttendancePage() {
-    const [students, setStudents] = useState(mockStudents);
+    const [students, setStudents] = useState([]);
+    const [currentTrip, setCurrentTrip] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    // State cho search/filter
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("all");
+
+    // State cho Modal ghi chú
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [showNoteModal, setShowNoteModal] = useState(false);
     const [noteText, setNoteText] = useState("");
 
+    // 1. Load dữ liệu khi vào trang
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            // B1: Lấy thông tin chuyến xe đang chạy
+            const dashboardRes = await tripService.getDriverDashboard();
+            const activeTrip = dashboardRes.data.currentTrip;
+
+            if (activeTrip) {
+                setCurrentTrip(activeTrip);
+                // B2: Lấy danh sách học sinh của chuyến này
+                const studentRes = await attendanceService.getStudentsBySchedule(activeTrip.lichTrinhId);
+                setStudents(studentRes.data.students || []);
+            } else {
+                toast.info("Bạn chưa bắt đầu chuyến xe nào. Vui lòng vào Check-in trước.");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Lỗi tải dữ liệu điểm danh");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Thống kê (Tính toán trực tiếp từ state students)
     const stats = {
         total: students.length,
         pickedUp: students.filter(s => s.attendance.loanDon).length,
-        pending: students.filter(s => !s.attendance.loanDon).length,
         droppedOff: students.filter(s => s.attendance.loanTra).length,
+        pending: students.filter(s => !s.attendance.loanDon).length,
     };
 
+    // Filter danh sách hiển thị
     const filteredStudents = students.filter(s => {
-        const matchSearch = s.hoTen.toLowerCase().includes(searchTerm.toLowerCase()) || s.maHS.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchSearch = (s.hoTen?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (s.maHS?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+
         if (filterStatus === "all") return matchSearch;
-        if (filterStatus === "picked-up") return matchSearch && s.attendance.loanDon;
+        if (filterStatus === "picked-up") return matchSearch && s.attendance.loanDon && !s.attendance.loanTra;
+        if (filterStatus === "dropped") return matchSearch && s.attendance.loanTra; // Đã trả
         if (filterStatus === "pending") return matchSearch && !s.attendance.loanDon;
         return matchSearch;
     });
 
-    const handleMarkPickup = (id) => {
-        setStudents(prev => prev.map(s => {
-            if (s.hocSinhId === id) {
-                const newVal = !s.attendance.loanDon;
-                toast[newVal ? "success" : "info"](newVal ? `${s.hoTen} – Đã đón ✓` : `${s.hoTen} – Bỏ đón`);
-                return { ...s, attendance: { ...s.attendance, loanDon: newVal, thoiGianDon: newVal ? new Date().toISOString() : null } };
+    // --- CÁC HÀM XỬ LÝ API ---
+
+    const handleMarkPickup = async (student) => {
+        if (!currentTrip) return;
+        try {
+            const isCancel = student.attendance.loanDon; // Nếu đã đón thì hành động là hủy
+            let res;
+
+            if (isCancel) {
+                res = await attendanceService.unmarkPickup(currentTrip.lichTrinhId, student.hocSinhId);
+                toast.info(`Đã hủy đón: ${student.hoTen}`);
+            } else {
+                res = await attendanceService.markPickup(currentTrip.lichTrinhId, student.hocSinhId);
+                toast.success(`Đã đón: ${student.hoTen}`);
             }
-            return s;
-        }));
-    };
 
-    const handleMarkDropoff = (id) => {
-        const student = students.find(s => s.hocSinhId === id);
-        if (!student.attendance.loanDon) return toast.warning("Phải đón trước khi trả!");
-        setStudents(prev => prev.map(s => {
-            if (s.hocSinhId === id) {
-                const newVal = !s.attendance.loanTra;
-                toast[newVal ? "success" : "info"](newVal ? `${s.hoTen} – Đã trả ✓` : `${s.hoTen} – Bỏ trả`);
-                return { ...s, attendance: { ...s.attendance, loanTra: newVal, thoiGianTra: newVal ? new Date().toISOString() : null } };
+            if (res.success) {
+                // Cập nhật state cục bộ để giao diện đổi màu ngay
+                updateStudentState(student.hocSinhId, res.data);
             }
-            return s;
-        }));
+        } catch (error) {
+            toast.error(error.message || "Lỗi cập nhật");
+        }
     };
 
-    const handleQuickMarkAll = () => {
-        setStudents(prev => prev.map(s => ({
-            ...s, attendance: { ...s.attendance, loanDon: true, thoiGianDon: new Date().toISOString() }
-        })));
-        toast.success("Đã đánh dấu ĐÓN TẤT CẢ học sinh!");
+    const handleMarkDropoff = async (student) => {
+        if (!currentTrip) return;
+        if (!student.attendance.loanDon) return toast.warning("Phải đón học sinh trước khi trả!");
+
+        try {
+            const isCancel = student.attendance.loanTra;
+            let res;
+
+            if (isCancel) {
+                res = await attendanceService.unmarkDropoff(currentTrip.lichTrinhId, student.hocSinhId);
+                toast.info(`Đã hủy trả: ${student.hoTen}`);
+            } else {
+                res = await attendanceService.markDropoff(currentTrip.lichTrinhId, student.hocSinhId);
+                toast.success(`Đã trả: ${student.hoTen}`);
+            }
+
+            if (res.success) {
+                updateStudentState(student.hocSinhId, res.data);
+            }
+        } catch (error) {
+            toast.error(error.message || "Lỗi cập nhật");
+        }
     };
 
+    const handleQuickMarkAll = async () => {
+        if (!currentTrip) return;
+        if (!window.confirm("Xác nhận đón tất cả học sinh chưa đón?")) return;
+
+        try {
+            await attendanceService.markAllPickup(currentTrip.lichTrinhId);
+            toast.success("Đã điểm danh đón tất cả!");
+            fetchData(); // Reload lại data cho chắc chắn
+        } catch (error) {
+            toast.error("Lỗi khi điểm danh nhanh");
+        }
+    };
+
+    // Hàm helper cập nhật 1 học sinh trong list
+    const updateStudentState = (hocSinhId, newAttendanceData) => {
+        setStudents(prev => prev.map(s =>
+            s.hocSinhId === hocSinhId ? { ...s, attendance: newAttendanceData } : s
+        ));
+    };
+
+    // --- GHI CHÚ ---
     const openNote = (s) => {
         setSelectedStudent(s);
         setNoteText(s.attendance.ghiChu || "");
         setShowNoteModal(true);
     };
 
-    const saveNote = () => {
-        setStudents(prev => prev.map(s => s.hocSinhId === selectedStudent.hocSinhId ? { ...s, attendance: { ...s.attendance, ghiChu: noteText } } : s));
-        toast.success("Đã lưu ghi chú");
-        setShowNoteModal(false);
+    const saveNote = async () => {
+        if (!currentTrip || !selectedStudent) return;
+        try {
+            const res = await attendanceService.addNote(currentTrip.lichTrinhId, selectedStudent.hocSinhId, noteText);
+            if (res.success) {
+                updateStudentState(selectedStudent.hocSinhId, res.data);
+                toast.success("Đã lưu ghi chú");
+                setShowNoteModal(false);
+            }
+        } catch (error) {
+            toast.error("Lỗi lưu ghi chú");
+        }
     };
 
-    const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "--:--";
+    const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "";
+
+    if (loading) return <div className="loading-screen">Đang tải danh sách lớp...</div>;
+
+    if (!currentTrip) return (
+        <div className="empty-state">
+            <h2>⛔ Chưa có chuyến xe nào đang chạy</h2>
+            <p>Vui lòng quay lại trang Check-in và bấm "Vào Ca / Bắt Đầu" để kích hoạt lộ trình.</p>
+        </div>
+    );
 
     return (
         <div className="attendance-master">
-            {/* UPDATED HEADER - Consistent with Routes */}
             <div className="page-header-consistent">
                 <h1>Điểm Danh Học Sinh</h1>
-                <p className="page-subtitle">Theo dõi việc đón và trả học sinh trên tuyến xe</p>
+                <p>Theo dõi việc đón và trả học sinh trên tuyến xe</p>
             </div>
 
-            {/* Tuyến + Quick button */}
+            {/* Thông tin chuyến xe */}
             <div className="trip-header">
                 <div className="trip-info">
                     <div className="bus-icon">🚌</div>
                     <div>
-                        <strong>{mockCurrentTrip.tuyenDuong.tenTuyen}</strong>
-                        <div className="time">{mockCurrentTrip.gioKhoiHanh} – {mockCurrentTrip.gioKetThuc}</div>
+                        <strong>{currentTrip.tuyenduong?.tenTuyen}</strong>
+                        <div className="time">
+                            Khởi hành: {formatTime(currentTrip.gioKhoiHanh)} - {currentTrip.xebuyt?.bienSo}
+                        </div>
                     </div>
                 </div>
                 <button className="quick-mark-btn" onClick={handleQuickMarkAll}>
@@ -106,7 +190,7 @@ export default function AttendancePage() {
                 </button>
             </div>
 
-            {/* Stats 4 ô nhỏ gọn */}
+            {/* Thống kê */}
             <div className="stats-compact">
                 <div className="stat"><span className="num total">{stats.total}</span> Tổng</div>
                 <div className="stat"><span className="num picked">{stats.pickedUp}</span> Đã đón</div>
@@ -114,53 +198,68 @@ export default function AttendancePage() {
                 <div className="stat"><span className="num dropped">{stats.droppedOff}</span> Đã trả</div>
             </div>
 
-            {/* Search + Filter */}
+            {/* Bộ lọc */}
             <div className="controls">
                 <div className="search-box">
-                    <input type="text" placeholder="🔍 Tìm học sinh..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                    <input type="text" placeholder="🔍 Tìm tên hoặc mã HS..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                 </div>
                 <div className="filter-tabs">
                     <button className={filterStatus === "all" ? "active" : ""} onClick={() => setFilterStatus("all")}>Tất cả</button>
-                    <button className={filterStatus === "picked-up" ? "active" : ""} onClick={() => setFilterStatus("picked-up")}>Đã đón</button>
+                    <button className={filterStatus === "picked-up" ? "active" : ""} onClick={() => setFilterStatus("picked-up")}>Trên xe</button>
                     <button className={filterStatus === "pending" ? "active" : ""} onClick={() => setFilterStatus("pending")}>Chưa đón</button>
                 </div>
             </div>
 
-            {/* DANH SÁCH HỌC SINH */}
+            {/* Danh sách học sinh */}
             <div className="student-list">
-                {filteredStudents.map(s => (
-                    <div key={s.hocSinhId} className={`student-row ${s.attendance.loanDon ? "picked" : ""} ${s.attendance.loanTra ? "dropped" : ""}`}>
-                        <div className="student-main">
-                            <div className="avatar">{s.hoTen[0]}</div>
-                            <div className="info">
-                                <div className="name">{s.hoTen} <span className="code">{s.maHS}</span></div>
-                                <div className="details">{s.lop} • {s.diemDon}</div>
-                                {s.attendance.ghiChu && <div className="note-tag">📝 {s.attendance.ghiChu}</div>}
+                {filteredStudents.length === 0 ? <p className="no-data">Không tìm thấy học sinh nào.</p> :
+                    filteredStudents.map(s => (
+                        <div key={s.hocSinhId} className={`student-row ${s.attendance.loanDon ? "picked" : ""} ${s.attendance.loanTra ? "dropped" : ""}`}>
+                            <div className="student-main">
+                                <div className="avatar">{s.hoTen ? s.hoTen[0] : "?"}</div>
+                                <div className="info">
+                                    <div className="name">{s.hoTen} <span className="code">{s.maHS}</span></div>
+                                    <div className="details">{s.lop} • {s.diemDon}</div>
+                                    {s.attendance.ghiChu && <div className="note-tag">📝 {s.attendance.ghiChu}</div>}
+                                </div>
+                            </div>
+
+                            <div className="student-actions">
+                                <button
+                                    className={`act pickup ${s.attendance.loanDon ? "done" : ""}`}
+                                    onClick={() => handleMarkPickup(s)}
+                                >
+                                    {s.attendance.loanDon ? `✓ ${formatTime(s.attendance.thoiGianDon)}` : "Đón"}
+                                </button>
+
+                                <button
+                                    className={`act dropoff ${s.attendance.loanTra ? "done" : ""}`}
+                                    onClick={() => handleMarkDropoff(s)}
+                                    disabled={!s.attendance.loanDon}
+                                >
+                                    {s.attendance.loanTra ? `✓ ${formatTime(s.attendance.thoiGianTra)}` : "Trả"}
+                                </button>
+
+                                <button className="act note" onClick={() => openNote(s)}>📝</button>
                             </div>
                         </div>
-
-                        <div className="student-actions">
-                            <button className={`act pickup ${s.attendance.loanDon ? "done" : ""}`} onClick={() => handleMarkPickup(s.hocSinhId)}>
-                                {s.attendance.loanDon ? `✓ ${formatTime(s.attendance.thoiGianDon)}` : "Pickup"}
-                            </button>
-                            <button className={`act dropoff ${s.attendance.loanTra ? "done" : ""}`} onClick={() => handleMarkDropoff(s.hocSinhId)} disabled={!s.attendance.loanDon}>
-                                {s.attendance.loanTra ? `✓ ${formatTime(s.attendance.thoiGianTra)}` : "Drop"}
-                            </button>
-                            <button className="act note" onClick={() => openNote(s)}>📝</button>
-                        </div>
-                    </div>
-                ))}
+                    ))}
             </div>
 
             {/* Modal ghi chú */}
             {showNoteModal && (
                 <div className="modal-backdrop" onClick={() => setShowNoteModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <h3>Ghi chú - {selectedStudent?.hoTen}</h3>
-                        <textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="VD: Đi muộn, có phụ huynh đón..." rows="4" />
+                        <h3>Ghi chú: {selectedStudent?.hoTen}</h3>
+                        <textarea
+                            value={noteText}
+                            onChange={e => setNoteText(e.target.value)}
+                            placeholder="Ví dụ: Nghỉ ốm, người nhà đón thay..."
+                            rows="4"
+                        />
                         <div className="modal-btns">
                             <button onClick={() => setShowNoteModal(false)}>Hủy</button>
-                            <button className="save" onClick={saveNote}>Lưu</button>
+                            <button className="save" onClick={saveNote}>Lưu lại</button>
                         </div>
                     </div>
                 </div>
