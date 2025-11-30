@@ -113,23 +113,24 @@ exports.getChildBusLocation = async (req, res) => {
       orderBy: { thoiGian: 'desc' }
     });
 
-    console.log("🔍 [Backend] Latest GPS:", location ? `${location.vido}, ${location.kinhdo}` : "None");
+    // console.log("🔍 [Backend] Latest GPS:", location ? `${location.vido}, ${location.kinhdo}` : "None");
 
     // Tạo routePath với validation cẩn thận
     const rawRoute = activeTrip.lichtrinh.tuyenduong?.tuyenduong_diemdung || [];
 
-    console.log(`🔍 [Backend] Raw route stops: ${rawRoute.length}`);
+    // console.log(`🔍 [Backend] Raw route stops: ${rawRoute.length}`);
 
     const routePoints = rawRoute
       .map((point, idx) => {
         const stop = {
-          lat: point.diemdung?.vido,
-          lng: point.diemdung?.kinhdo,
+          lat: Number(point.diemdung?.vido),
+          lng: Number(point.diemdung?.kinhdo),
           name: point.diemdung?.tenDiemDung || `Điểm ${idx + 1}`,
           thuTu: point.thuTu
         };
 
-        console.log(`  Stop ${idx}:`, stop);
+
+        // console.log(`  Stop ${idx}:`, stop);
 
         // Chỉ trả về nếu có tọa độ hợp lệ
         if (stop.lat && stop.lng) {
@@ -139,7 +140,7 @@ exports.getChildBusLocation = async (req, res) => {
       })
       .filter(Boolean); // Lọc null
 
-    console.log(`✅ [Backend] Valid route points: ${routePoints.length}`);
+    // console.log(`✅ [Backend] Valid route points: ${routePoints.length}`);
 
     const responseData = {
       lat: location?.vido || 10.7769,
@@ -153,7 +154,7 @@ exports.getChildBusLocation = async (req, res) => {
       }
     };
 
-    console.log("📤 [Backend] Sending response with", routePoints.length, "route points");
+    // console.log("📤 [Backend] Sending response with", routePoints.length, "route points");
 
     res.json({
       success: true,

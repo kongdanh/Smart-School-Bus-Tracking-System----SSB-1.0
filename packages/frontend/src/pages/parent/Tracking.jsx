@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import parentService from '../../services/parentService';
 import '../../styles/parent-styles/parent-tracking.css';
 
-// --- 1. CONFIG ICON (Để hiện icon xe buýt) ---
+// --- 1. CONFIG ICON ---
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -21,7 +21,7 @@ const busIcon = new L.Icon({
     popupAnchor: [0, -20]
 });
 
-// --- 2. DỮ LIỆU MẪU (FALLBACK) ---
+// --- 2. DỮ LIỆU MẪU ---
 const DEMO_ROUTE = [
     { lat: 10.7716, lng: 106.6995, name: "Trường ABC" },
     { lat: 10.7876, lng: 106.7032, name: "Thảo Cầm Viên" },
@@ -31,13 +31,13 @@ const DEMO_ROUTE = [
     { lat: 10.8490, lng: 106.7628, name: "Thủ Đức" }
 ];
 
-// --- 3. COMPONENT ĐIỀU KHIỂN MAP VÀ VẼ ROUTE ---
+// --- 3. COMPONENT ĐIỀU KHIỂN MAP ---
 const MapUpdater = ({ center }) => {
     const map = useMap();
     const prevCenter = useRef(center);
 
     useEffect(() => {
-        if (center) {
+        if (center && center[0] && center[1]) {
             const dist = map.distance(prevCenter.current, center);
             if (dist > 10) {
                 map.flyTo(center, map.getZoom(), { duration: 2.0, easeLinearity: 0.25 });
@@ -49,70 +49,128 @@ const MapUpdater = ({ center }) => {
     return null;
 };
 
-// Component riêng để vẽ route - ĐẢM BẢO RE-RENDER
-const RouteLayer = ({ routePath }) => {
-    console.log("🎨 RouteLayer rendering with", routePath.length, "points");
+// --- 4. ROUTE LAYER (ĐÃ SỬA LỖI MÀU & TỐI ƯU RE-RENDER) ---
+// Sử dụng React.memo để ngăn việc vẽ lại đường khi xe di chuyển
+const RouteLayer = React.memo(({ routePath }) => {
+    const [osrmPath, setOsrmPath] = useState([]);
+    const map = useMap();
 
-    if (!routePath || routePath.length === 0) {
-        console.warn("⚠️ RouteLayer: No route data");
-        return null;
-    }
+    useEffect(() => {
+        if (!routePath || routePath.length < 2) {
+            setOsrmPath([]);
+            return;
+        }
 
-    const polylinePositions = routePath.map(p => [p.lat, p.lng]);
+        // 1. Zoom map (Chỉ zoom khi lộ trình thay đổi)
+        const bounds = routePath.map(p => [p.lat, p.lng]);
+        if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+
+        // 2. Gọi OSRM
+        const fetchRouteFromOSRM = async () => {
+            try {
+                // Logic lấy mẫu giữ nguyên...
+                const step = Math.ceil(routePath.length / 10);
+                const sampledRoute = routePath.filter((_, index) => index % step === 0);
+
+                if (sampledRoute[0] !== routePath[0]) sampledRoute.unshift(routePath[0]);
+                if (sampledRoute[sampledRoute.length - 1] !== routePath[routePath.length - 1]) {
+                    sampledRoute.push(routePath[routePath.length - 1]);
+                }
+
+                const coordString = sampledRoute
+                    .map(point => `${point.lng},${point.lat}`)
+                    .join(';');
+
+                const res = await fetch(
+                    `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`
+                );
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.routes && data.routes.length > 0) {
+                        const routeCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                        setOsrmPath(routeCoords);
+                    }
+                }
+            } catch (error) {
+                console.warn("OSRM error, using straight line");
+            }
+        };
+
+        fetchRouteFromOSRM();
+    }, [routePath, map]); // Chỉ chạy lại khi routePath thay đổi
+
+    if (!routePath || routePath.length === 0) return null;
+
+    const straightLinePath = routePath.map(p => [p.lat, p.lng]);
 
     return (
         <>
-            {/* Vẽ đường */}
-            {polylinePositions.length > 1 && (
+            {/* --- LỚP 1: ĐƯỜNG THẲNG (FALLBACK) --- */}
+            <Polyline
+                positions={straightLinePath}
+                pathOptions={{
+                    color: '#6b7280', // <--- ĐÃ SỬA MÀU TẠI ĐÂY
+                    weight: 6,        // Tăng độ dày lên chút cho dễ nhìn
+                    opacity: 0.6,
+                    dashArray: '10, 10',
+                    lineCap: 'round'
+                }}
+            />
+
+            {/* --- LỚP 2: ĐƯỜNG OSRM (NẾU CÓ) --- */}
+            {osrmPath.length > 0 && (
                 <Polyline
-                    positions={polylinePositions}
+                    positions={osrmPath}
                     pathOptions={{
-                        color: '#2563eb',
+                        color: '#2563eb', // Màu xanh
                         weight: 6,
                         opacity: 0.8,
-                        lineJoin: 'round',
-                        lineCap: 'round'
+                        lineJoin: 'round'
                     }}
                 />
             )}
 
-            {/* Vẽ các điểm dừng */}
+            {/* Markers */}
             {routePath.map((stop, idx) => (
                 <CircleMarker
-                    key={`stop-${idx}-${stop.lat}-${stop.lng}`}
+                    key={`stop-${idx}-${stop.lat}`}
                     center={[stop.lat, stop.lng]}
-                    radius={8}
+                    radius={6}
                     pathOptions={{
-                        color: '#ffffff',
-                        fillColor: '#dc2626',
+                        color: '#fff',
+                        fillColor: idx === 0 ? '#10b981' : (idx === routePath.length - 1 ? '#ef4444' : '#3b82f6'),
                         fillOpacity: 1,
-                        weight: 3
+                        weight: 2
                     }}
                 >
-                    <Popup>
-                        <strong>Điểm {idx + 1}</strong><br />
-                        {stop.name}
-                    </Popup>
+                    <Popup><strong>{stop.name}</strong></Popup>
                 </CircleMarker>
             ))}
         </>
     );
-};
+}, (prevProps, nextProps) => {
+    // Hàm so sánh custom cho React.memo
+    // Nếu độ dài mảng hoặc tọa độ điểm đầu/cuối giống nhau thì KHÔNG render lại
+    if (prevProps.routePath === nextProps.routePath) return true;
+    return JSON.stringify(prevProps.routePath) === JSON.stringify(nextProps.routePath);
+});
 
-// --- COMPONENT CHÍNH ---
+// --- 5. COMPONENT CHÍNH (FIXED) ---
 const Tracking = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // State
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [students, setStudents] = useState([]);
     const [busData, setBusData] = useState(null);
-    const [routePath, setRoutePath] = useState(DEMO_ROUTE);
+    const [routePath, setRoutePath] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isDemoMode, setIsDemoMode] = useState(false);
 
-    // 1. Load danh sách học sinh
+    // Load danh sách học sinh
     useEffect(() => {
         const init = async () => {
             try {
@@ -125,7 +183,9 @@ const Tracking = () => {
                     }
                 }
             } catch (error) {
-                console.error(error);
+
+                // debug error
+                // console.error("❌ Error loading students:", error);
             } finally {
                 setLoading(false);
             }
@@ -133,151 +193,147 @@ const Tracking = () => {
         init();
     }, [location.state]);
 
-    // 2. Polling vị trí xe
+    // Polling vị trí xe (FIXED)
     useEffect(() => {
         if (!selectedStudent) return;
 
         const fetchLocation = async () => {
             try {
+                // debug id student
+                // console.log("🔄 [Tracking] Fetching location for student:", selectedStudent.id);
+
                 const res = await parentService.getBusLocation(selectedStudent.id);
 
-                console.log("📡 Full Response:", res);
+                // debug full response
+                //console.log("📥 [Tracking] API Response:", res);
 
-                // Backend có thể trả về 2 cách:
-                // Cách 1: { data: { success, data: {...} } }
-                // Cách 2: { data: { success, lat, lng, routePath, busInfo } }
+                const actualData = res?.data?.data || res?.data || res;
+                // debug actual data
+                //console.log("📦 [Tracking] Actual data:", actualData);
 
-                const responseData = res.data;
+                if (!actualData) {
+                    console.warn("⚠️ [Tracking] No data received, switching to demo");
+                    setIsDemoMode(true);
+                    setRoutePath(DEMO_ROUTE);
+                    return;
+                }
 
-                // Nếu có nested data.data thì dùng, không thì dùng data
-                const actualData = responseData?.data || responseData;
+                // Xử lý vị trí xe
+                const busLat = parseFloat(actualData.lat || actualData.vido);
 
-                console.log("📦 Response data:", responseData);
-                console.log("🎯 Actual data:", actualData);
+                console.log("Parsed busLat:", busLat);
+                console.log("type of buslat?", typeof busLat);
+                const busLng = parseFloat(actualData.lng || actualData.kinhdo);
 
-                // Kiểm tra có lat/lng không (bỏ qua success field)
-                if (actualData && (actualData.lat !== undefined || actualData.vido !== undefined)) {
-                    const busLat = actualData.lat || actualData.vido;
-                    const busLng = actualData.lng || actualData.kinhdo;
-
-                    console.log("🚌 Bus position:", busLat, busLng);
-
+                console.log("Parsed busLng:", busLng);
+                if (!isNaN(busLat) && !isNaN(busLng)) {
                     setBusData({
                         lat: busLat,
                         lng: busLng,
-                        updatedAt: actualData.updatedAt,
+                        updatedAt: actualData.updatedAt || new Date().toISOString(),
                         busInfo: actualData.busInfo || {}
                     });
 
-                    // Extract route
-                    const rawRoute = actualData.routePath;
+                    // debug bus position
+                    // console.log("✅ [Tracking] Bus position updated:", busLat, busLng);
+                }
 
-                    console.log("🛣️ Raw routePath:", rawRoute);
-                    console.log("🛣️ Type:", Array.isArray(rawRoute) ? 'Array' : typeof rawRoute);
-                    console.log("🛣️ Length:", rawRoute?.length);
+                const rawRoute = actualData.routePath;
 
-                    if (Array.isArray(rawRoute) && rawRoute.length > 0) {
-                        const validRoute = rawRoute
-                            .map((stop, idx) => {
-                                const lat = parseFloat(stop?.lat || stop?.vido);
-                                const lng = parseFloat(stop?.lng || stop?.kinhdo);
-                                const name = stop?.name || stop?.tenDiemDung || `Điểm ${idx + 1}`;
+                // debug raw routePath
+                // console.log("🛣️ [Tracking] Raw routePath:", rawRoute);
 
-                                if (!isNaN(lat) && !isNaN(lng)) {
-                                    return { lat, lng, name };
-                                }
-                                return null;
-                            })
-                            .filter(Boolean);
+                if (Array.isArray(rawRoute) && rawRoute.length > 0) {
+                    const validRoute = rawRoute
+                        .map((stop, idx) => {
+                            const lat = parseFloat(stop?.lat || stop?.vido);
+                            const lng = parseFloat(stop?.lng || stop?.kinhdo);
+                            const name = stop?.name || stop?.tenDiemDung || `Điểm ${idx + 1}`;
 
-                        console.log("✅ Valid route points:", validRoute.length);
-                        console.log("✅ Route data:", validRoute);
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                return { lat, lng, name };
+                            }
+                            return null;
+                        })
+                        .filter(Boolean);
 
-                        if (validRoute.length > 0) {
-                            setRoutePath(validRoute);
-                            setIsDemoMode(false);
-                        } else {
-                            console.warn("⚠️ No valid points, using DEMO");
-                            setRoutePath(DEMO_ROUTE);
-                            setIsDemoMode(true);
-                        }
+                    // debug valid route
+                    // console.log("✅ [Tracking] Valid route points:", validRoute.length);
+
+                    if (validRoute.length >= 2) {
+                        setRoutePath(validRoute);
+                        setIsDemoMode(false);
+
+                        // debug route set
+                        // console.log("✅ [Tracking] Route set successfully:", validRoute);
                     } else {
-                        console.warn("⚠️ routePath invalid:", rawRoute);
+
+                        // debug insufficient points
+                        // console.warn("⚠️ [Tracking] Not enough valid points, using demo");
                         setRoutePath(DEMO_ROUTE);
                         setIsDemoMode(true);
                     }
                 } else {
-                    console.warn("⚠️ No GPS data, using Demo");
-                    setIsDemoMode(true);
-                    setRoutePath(DEMO_ROUTE);
 
-                    const now = Date.now() / 10000;
-                    setBusData({
-                        lat: 10.7716 + (Math.sin(now) * 0.01),
-                        lng: 106.6995 + (Math.cos(now) * 0.01),
-                        updatedAt: new Date().toISOString(),
-                        busInfo: {
-                            plate: "DEMO",
-                            driver: "Demo",
-                            speed: 45
-                        }
-                    });
+                    // debug no routePath
+                    // console.warn("⚠️ [Tracking] No routePath in response, using demo");
+                    setRoutePath(DEMO_ROUTE);
+                    setIsDemoMode(true);
                 }
+
             } catch (err) {
-                console.error("❌ Error:", err);
+
+                // debug error
+                // console.error("❌ [Tracking] Error fetching location:", err);
                 setIsDemoMode(true);
                 setRoutePath(DEMO_ROUTE);
             }
         };
 
         fetchLocation();
-        const interval = setInterval(fetchLocation, 3000);
+
+        const interval = setInterval(fetchLocation, 3000); // 3s polling
         return () => clearInterval(interval);
     }, [selectedStudent]);
 
     const handleBack = () => {
         setSelectedStudent(null);
+        setRoutePath([]);
         navigate('/parent/tracking', { replace: true, state: {} });
     };
 
-    // Format Data vẽ Map
-    const polylinePositions = routePath.map(p => [p.lat, p.lng]);
     const busPosition = busData ? [busData.lat, busData.lng] : [10.7716, 106.6995];
 
-    // DEBUG - Kiểm tra render
-    useEffect(() => {
-        console.log("🗺️ ===== MAP RENDER DATA =====");
-        console.log("  Route Path array:", routePath);
-        console.log("  Route Path length:", routePath.length);
-        console.log("  Polyline Positions:", polylinePositions);
-        console.log("  Polyline length:", polylinePositions.length);
-        console.log("  Bus Position:", busPosition);
-        console.log("  Is Demo Mode:", isDemoMode);
-        console.log("================================");
+    if (loading) {
+        return (
+            <div className="tracking-container">
+                <div className="loading-container">
+                    <div className="spinner"></div>
+                    <p>Đang tải dữ liệu...</p>
+                </div>
+            </div>
+        );
+    }
 
-        // Kiểm tra từng điểm
-        routePath.forEach((stop, idx) => {
-            console.log(`  Stop ${idx}:`, stop);
-        });
-    }, [routePath, busPosition, isDemoMode]);
-
-    if (loading) return <div className="tracking-container"><p>Đang tải...</p></div>;
-
-    // --- VIEW 1: CHI TIẾT (MAP + FULL INFO) ---
+    // --- VIEW 1: CHI TIẾT MAP ---
     if (selectedStudent) {
         return (
             <div className="tracking-detail-container">
-                {/* Header */}
                 <div className="detail-header">
-                    <button onClick={handleBack} className="btn-back">← Quay lại danh sách</button>
+                    <button onClick={handleBack} className="btn-back">
+                        ← Quay lại danh sách
+                    </button>
                     <div className="detail-title">
                         <h2>{selectedStudent.name}</h2>
-                        {isDemoMode && <span style={{ color: 'red', fontSize: '12px', marginLeft: '10px' }}>(Chế độ Demo)</span>}
+                        {isDemoMode && (
+                            <span style={{ color: '#ef4444', fontSize: '14px', fontWeight: '500' }}>
+                                (Chế độ Demo - Không có dữ liệu thực)
+                            </span>
+                        )}
                     </div>
                 </div>
 
-                {/* Map Area */}
-                <div className="map-container" style={{ height: '500px', width: '100%', borderRadius: '12px', overflow: 'hidden', position: 'relative' }}>
+                <div className="map-container">
                     <MapContainer
                         center={busPosition}
                         zoom={13}
@@ -292,55 +348,62 @@ const Tracking = () => {
 
                         <MapUpdater center={busPosition} />
 
-                        {/* Vẽ route qua component riêng */}
-                        <RouteLayer routePath={routePath} />
+                        {routePath.length > 0 && <RouteLayer routePath={routePath} />}
 
-                        {/* Xe Buýt */}
                         {busData && (
                             <Marker position={busPosition} icon={busIcon}>
                                 <Popup>
                                     <strong>{busData.busInfo?.plate || "Xe buýt"}</strong><br />
-                                    {isDemoMode ? "Demo" : "Real-time"}
+                                    {isDemoMode ? "Demo Mode" : "Real-time Tracking"}
                                 </Popup>
                             </Marker>
                         )}
                     </MapContainer>
                 </div>
 
-                {/* Info Grid */}
                 <div className="detail-info-grid">
                     <div className="info-card">
+                        <div className="info-icon bus">🚌</div>
                         <h3>Thông tin chuyến xe</h3>
                         <div className="info-item">
                             <span className="info-label">Biển số:</span>
-                            <span className="info-value highlight">{busData?.busInfo?.plate || "Đang cập nhật"}</span>
+                            <span className="info-value highlight">
+                                {busData?.busInfo?.plate || selectedStudent.busPlate || "Đang cập nhật"}
+                            </span>
                         </div>
                         <div className="info-item">
                             <span className="info-label">Tài xế:</span>
-                            <span className="info-value">{busData?.busInfo?.driver || "Đang cập nhật"}</span>
+                            <span className="info-value">
+                                {busData?.busInfo?.driver || selectedStudent.driver || "Đang cập nhật"}
+                            </span>
                         </div>
                         <div className="info-item">
-                            <span className="info-label">Tốc độ:</span>
-                            <span className="info-value">{busData?.speed || 40} km/h</span>
+                            <span className="info-label">Tuyến đường:</span>
+                            <span className="info-value">
+                                {busData?.busInfo?.routeName || "Đang cập nhật"}
+                            </span>
                         </div>
                     </div>
 
                     <div className="info-card">
-                        <h3>Trạng thái</h3>
+                        <div className="info-icon student">📍</div>
+                        <h3>Trạng thái học sinh</h3>
                         <div className="info-item">
                             <span className="info-label">Điểm đón:</span>
                             <span className="info-value">{selectedStudent.pickupPoint}</span>
                         </div>
                         <div className="info-item">
                             <span className="info-label">Trạng thái:</span>
-                            <span className={`status-badge ${selectedStudent.status === 'on-bus' ? 'on-bus' : 'waiting'}`}>
-                                {selectedStudent.status === 'on-bus' ? 'Đang trên xe' : 'Đang chờ'}
+                            <span className={`status-badge small ${selectedStudent.status === 'on-bus' ? 'status-on-bus' : 'status-waiting'}`}>
+                                <span className="status-dot"></span>
+                                {selectedStudent.status === 'on-bus' ? 'Đang trên xe' :
+                                    selectedStudent.status === 'arrived' ? 'Đã đến nơi' : 'Đang chờ'}
                             </span>
                         </div>
                         <div className="info-item">
                             <span className="info-label">Cập nhật:</span>
-                            <span className="info-value" style={{ color: '#16a34a', fontWeight: 'bold' }}>
-                                {busData ? new Date(busData.updatedAt).toLocaleTimeString() : '--:--'}
+                            <span className="info-value" style={{ color: '#16a34a' }}>
+                                {busData ? new Date(busData.updatedAt).toLocaleTimeString('vi-VN') : '--:--'}
                             </span>
                         </div>
                     </div>
@@ -352,15 +415,28 @@ const Tracking = () => {
     // --- VIEW 2: DANH SÁCH ---
     return (
         <div className="tracking-container">
-            <div className="tracking-header"><h1>Theo dõi trực tiếp</h1></div>
+            <div className="tracking-header">
+                <div className="header-content-tracking">
+                    <h1>Theo dõi trực tiếp</h1>
+                    <p className="tracking-subtitle">Xem vị trí xe và lộ trình di chuyển của học sinh</p>
+                </div>
+            </div>
+
             <div className="students-grid">
                 {students.map(student => (
                     <div key={student.id} className="student-card" onClick={() => setSelectedStudent(student)}>
-                        <div className="card-header"><div className="student-avatar">{student.name?.charAt(0)}</div></div>
+                        <div className="card-header">
+                            <div className="student-avatar">{student.name?.charAt(0)}</div>
+                            <div className={`status-indicator ${student.status === 'on-bus' ? 'status-on-bus' : 'status-waiting'}`}>
+                                {student.status === 'on-bus' ? '🚌' : student.status === 'arrived' ? '✓' : '⏳'}
+                            </div>
+                        </div>
                         <div className="card-content">
                             <h3>{student.name}</h3>
-                            <p>{student.class}</p>
-                            <div className="status-badge on-bus">Xem vị trí</div>
+                            <p className="student-class">{student.class}</p>
+                            <button className="btn-view-route">
+                                Xem vị trí & Lộ trình ➜
+                            </button>
                         </div>
                     </div>
                 ))}
