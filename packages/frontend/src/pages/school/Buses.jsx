@@ -42,16 +42,16 @@ const Buses = () => {
       // Fetch schedules/routes for this bus
       const schedulesRes = await schoolService.getAllSchedules?.() || { success: false, data: [] };
       const allSchedules = schedulesRes.data || [];
-      
+
       // Filter schedules for this bus
       const busSchedules = allSchedules.filter(s => s.xeBuytId === bus.id || s.bienSoXe === bus.bienSo);
-      
+
       if (busSchedules.length === 0) {
         toast.info(`Xe ${bus.bienSo} không có lịch trình nào`);
       } else {
         toast.info(`Xe ${bus.bienSo} có ${busSchedules.length} lịch trình`);
       }
-      
+
       setSelectedBusRoutes(bus.id);
       setBusRoutes(busSchedules);
     } catch (error) {

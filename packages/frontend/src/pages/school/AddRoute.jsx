@@ -24,7 +24,8 @@ const AddRoute = () => {
     const [newStop, setNewStop] = useState({
         tenDiemDung: '',
         diaChi: '',
-        selectedStudentId: ''
+        selectedStudentId: '',
+        phuongXa: ''
     });
 
     useEffect(() => {
@@ -81,7 +82,8 @@ const AddRoute = () => {
         setNewStop({
             tenDiemDung: '',
             diaChi: '',
-            selectedStudentId: ''
+            selectedStudentId: '',
+            phuongXa: ''
         });
 
         toast.success('Đã thêm điểm dừng');
@@ -94,7 +96,8 @@ const AddRoute = () => {
                 ...prev,
                 selectedStudentId: '',
                 tenDiemDung: '',
-                diaChi: ''
+                diaChi: '',
+                phuongXa: ''
             }));
             return;
         }
@@ -105,10 +108,9 @@ const AddRoute = () => {
                 ...prev,
                 selectedStudentId: studentId,
                 tenDiemDung: student.hoTen || '',
-                diaChi: student.diemDon || ''
+                diaChi: student.diemDon || student.diaChiHienTai || '',
+                phuongXa: student.phuongXa || student.quan || ''
             }));
-        } else {
-            toast.warning('Không tìm thấy học sinh này');
         }
     };
 
@@ -194,11 +196,18 @@ const AddRoute = () => {
             adjustedDate.setHours(adjustedDate.getHours() + 7);
             const adjustedTime = adjustedDate.toTimeString().slice(0, 5);
 
+            // Calculate end time = start time + 2 hours
+            const endDate = new Date();
+            endDate.setHours(parseInt(hours) + 2, parseInt(minutes), 0);
+            endDate.setHours(endDate.getHours() + 7);
+            const endTime = endDate.toTimeString().slice(0, 5);
+
             // Create schedule
             const scheduleRes = await schoolService.createSchedule({
                 maLich: `LCH-${formData.maTuyen}-${Date.now()}`,
                 ngay: new Date().toISOString().split('T')[0],
                 gioKhoiHanh: adjustedTime,
+                gioKetThuc: endTime,
                 tuyenDuongId: routeId,
                 xeBuytId: parseInt(formData.selectedBusId),
                 taiXeId: parseInt(formData.selectedDriverId)
@@ -216,8 +225,10 @@ const AddRoute = () => {
             }
 
             toast.success('Tạo tuyến đường thành công!');
-            // Redirect back
-            window.history.back();
+            // Redirect back and reload
+            setTimeout(() => {
+                window.history.back();
+            }, 500);
         } catch (error) {
             console.error('Error creating route:', error);
             toast.error('Lỗi khi tạo tuyến đường');
@@ -288,18 +299,40 @@ const AddRoute = () => {
                             <div className="stop-input-group">
                                 <div className="form-grid">
                                     <div className="form-group full-width">
-                                        <label>Chọn Học Sinh (Để Tự Động Điền Địa Chỉ)</label>
+                                        <label>Bước 1: Chọn Phường/Xã</label>
+                                        <select
+                                            value={newStop.phuongXa}
+                                            onChange={e => setNewStop(prev => ({ ...prev, phuongXa: e.target.value }))}
+                                            className="student-select"
+                                        >
+                                            <option value="">-- Chọn Phường/Xã --</option>
+                                            {Array.from(new Set(students
+                                                .filter(s => s.phuongXa || s.quan)
+                                                .map(s => s.phuongXa || s.quan)))
+                                                .map(area => (
+                                                    <option key={area} value={area}>
+                                                        {area}
+                                                    </option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+                                    <div className="form-group full-width">
+                                        <label>Bước 2: Chọn Học Sinh hoặc Nhập Địa Chỉ</label>
                                         <select
                                             value={newStop.selectedStudentId}
                                             onChange={e => handleStudentSelect(e.target.value)}
                                             className="student-select"
                                         >
                                             <option value="">-- Hoặc nhập thủ công --</option>
-                                            {students.map(student => (
-                                                <option key={student.id} value={student.id}>
-                                                    {student.hoTen} ({student.lop}) - {student.diemDon}
-                                                </option>
-                                            ))}
+                                            {students
+                                                .filter(s => !newStop.phuongXa || s.phuongXa === newStop.phuongXa || s.quan === newStop.phuongXa)
+                                                .map((student, idx) => (
+                                                    <option key={`${student.id}-${idx}`} value={student.id}>
+                                                        {student.hoTen} ({student.lop}) - {student.diemDon || student.diaChiHienTai || 'N/A'}
+                                                    </option>
+                                                ))
+                                            }
                                         </select>
                                     </div>
                                     <div className="form-group full-width">
@@ -312,7 +345,7 @@ const AddRoute = () => {
                                         />
                                     </div>
                                     <div className="form-group full-width">
-                                        <label>Địa Chỉ *</label>
+                                        <label>Địa Chỉ Chi Tiết *</label>
                                         <input
                                             type="text"
                                             placeholder="VD: 123 Lê Lợi, Quận 1, TP.HCM"
