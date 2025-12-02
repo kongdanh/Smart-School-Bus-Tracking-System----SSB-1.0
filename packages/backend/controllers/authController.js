@@ -9,14 +9,25 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Hàm xác định role dựa trên userCode
 const getRoleFromUserCode = (userCode) => {
   if (!userCode) return null;
+
+  // Hỗ trợ ADMIN
+  if (userCode.toUpperCase() === 'ADMIN') {
+    return 'school'; // Admin có quyền như school admin
+  }
+
   const prefix = userCode.substring(0, 2).toUpperCase();
   const roleMap = { 'QL': 'school', 'PH': 'parent', 'TX': 'driver' };
   return roleMap[prefix] || null;
 };
 
 // Hàm kiểm tra user có tồn tại trong bảng role tương ứng
-const checkUserRole = async (userId, role) => {
+const checkUserRole = async (userId, role, userCode) => {
   try {
+    // ADMIN có thể bypass kiểm tra role
+    if (userCode && userCode.toUpperCase() === 'ADMIN') {
+      return true;
+    }
+
     switch (role) {
       case 'school':
         const qlxb = await prisma.quanlyxebuyt.findUnique({ where: { userId } });
@@ -97,7 +108,7 @@ const login = async (req, res) => {
       });
     }
 
-    const hasRole = await checkUserRole(user.userId, role);
+    const hasRole = await checkUserRole(user.userId, role, user.userCode);
     if (!hasRole) {
       return res.status(403).json({
         success: false,

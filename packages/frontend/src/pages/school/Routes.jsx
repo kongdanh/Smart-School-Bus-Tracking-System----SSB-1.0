@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -13,6 +14,7 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function SchoolRoutes() {
+  const navigate = useNavigate();
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -156,7 +158,7 @@ export default function SchoolRoutes() {
           <p className="routes-subtitle">View and manage bus routes with real-time data</p>
         </div>
         <div className="header-actions">
-          <button className="btn-add">
+          <button className="btn-add" onClick={() => navigate('/school/add-route')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />

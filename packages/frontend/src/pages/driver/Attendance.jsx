@@ -40,11 +40,11 @@ export default function AttendancePage() {
         }
     }, [isCheckedIn, currentTrip?.lichTrinhId]);
 
-    // 3. Khi trip đang active, poll attendance updates mỗi 2 giây
+    // 3. Khi trip đang active, poll attendance updates mỗi 5 giây (không quá tần suất)
     useEffect(() => {
         if (!isCheckedIn || !currentTrip) return;
 
-        const attendanceInterval = setInterval(fetchStudents, 2000);
+        const attendanceInterval = setInterval(fetchStudents, 5000);
 
         return () => clearInterval(attendanceInterval);
     }, [isCheckedIn, currentTrip?.lichTrinhId]);
@@ -112,20 +112,17 @@ export default function AttendancePage() {
 
     const handleMarkPickup = async (student) => {
         if (!currentTrip) return;
-        try {
-            const isCancel = student.attendance.loanDon; // Nếu đã đón thì hành động là hủy
-            let res;
 
-            if (isCancel) {
-                res = await attendanceService.unmarkPickup(currentTrip.lichTrinhId, student.hocSinhId);
-                toast.info(`Đã hủy đón: ${student.hoTen}`);
-            } else {
-                res = await attendanceService.markPickup(currentTrip.lichTrinhId, student.hocSinhId);
-                toast.success(`Đã đón: ${student.hoTen}`);
-            }
+        // Không cho phép hủy đón - chỉ cho phép đón nếu chưa đón
+        if (student.attendance.loanDon) {
+            return toast.warning("Học sinh đã được đón - không thể hủy. Hãy trả học sinh để hủy.");
+        }
+
+        try {
+            const res = await attendanceService.markPickup(currentTrip.lichTrinhId, student.hocSinhId);
+            toast.success(`Đã đón: ${student.hoTen}`);
 
             if (res.success) {
-                // Cập nhật state cục bộ để giao diện đổi màu ngay
                 updateStudentState(student.hocSinhId, res.data);
             }
         } catch (error) {
@@ -164,7 +161,7 @@ export default function AttendancePage() {
         try {
             await attendanceService.markAllPickup(currentTrip.lichTrinhId);
             toast.success("Đã điểm danh đón tất cả!");
-            fetchData(); // Reload lại data cho chắc chắn
+            fetchStudents(); // Reload lại data cho chắc chắn
         } catch (error) {
             toast.error("Lỗi khi điểm danh nhanh");
         }
@@ -299,6 +296,8 @@ export default function AttendancePage() {
                                 <button
                                     className={`act pickup ${s.attendance.loanDon ? "done" : ""}`}
                                     onClick={() => handleMarkPickup(s)}
+                                    disabled={s.attendance.loanDon}
+                                    title={s.attendance.loanDon ? "Đã đón - không thể hủy" : "Nhấn để đón"}
                                 >
                                     {s.attendance.loanDon ? `✓ ${formatTime(s.attendance.thoiGianDon)}` : "Đón"}
                                 </button>
@@ -307,6 +306,7 @@ export default function AttendancePage() {
                                     className={`act dropoff ${s.attendance.loanTra ? "done" : ""}`}
                                     onClick={() => handleMarkDropoff(s)}
                                     disabled={!s.attendance.loanDon}
+                                    title={!s.attendance.loanDon ? "Phải đón trước khi trả" : "Nhấn để trả"}
                                 >
                                     {s.attendance.loanTra ? `✓ ${formatTime(s.attendance.thoiGianTra)}` : "Trả"}
                                 </button>

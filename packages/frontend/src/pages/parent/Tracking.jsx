@@ -15,7 +15,7 @@ const Tracking = () => {
     const [polyLineCoords, setPolyLineCoords] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // --- HÀM HELPER: XÁC ĐỊNH TRẠNG THÁI (ĐÃ FIX LỖI) ---
+    // --- HÀM HELPER: XÁC ĐỊNH TRẠNG THÁI DỰA VÀO loanDon, loanTra ---
     const getStudentStatus = (student) => {
         // 1. Nếu không có object attendance => Hôm nay không có lịch
         if (!student.attendance) {
@@ -29,7 +29,7 @@ const Tracking = () => {
 
         const { loanDon, loanTra } = student.attendance;
 
-        // 2. Ưu tiên 1: Đã trả học sinh (Về đến nơi)
+        // 2. Ưu tiên 1: Đã trả học sinh (loanTra = true) => Về đến nơi
         if (loanTra) {
             return {
                 label: "Đã đến nơi",
@@ -39,8 +39,8 @@ const Tracking = () => {
             };
         }
 
-        // 3. Ưu tiên 2: Đã đón nhưng chưa trả (Đang trên xe)
-        if (loanDon) {
+        // 3. Ưu tiên 2: Đã đón nhưng chưa trả (loanDon = true, loanTra = false) => Đang trên xe
+        if (loanDon && !loanTra) {
             return {
                 label: "Đang trên xe",
                 className: "status-on-bus",
@@ -49,7 +49,7 @@ const Tracking = () => {
             };
         }
 
-        // 4. Còn lại: Có lịch nhưng chưa đón (Đang chờ)
+        // 4. Còn lại: Có lịch nhưng chưa đón (loanDon = false) => Đang chờ
         return {
             label: "Đang chờ",
             className: "status-waiting",
@@ -81,15 +81,15 @@ const Tracking = () => {
         init();
     }, [location.state]);
 
-    // --- 2. POLLING VỊ TRÍ XE (3 giây/lần) ---
+    // --- 2. POLLING VỊ TRÍ XE (3 giây/lần) & CẬP NHẬT TRẠNG THÁI ---
     useEffect(() => {
         if (!selectedStudent) return;
 
-        const fetchLocation = async () => {
+        const fetchData = async () => {
             try {
-                // Gọi API lấy vị trí xe
-                const res = await parentService.getBusLocation(selectedStudent.id);
-                const actualData = res?.data?.data || res?.data || res;
+                // Lấy vị trí xe
+                const locationRes = await parentService.getBusLocation(selectedStudent.id);
+                const actualData = locationRes?.data?.data || locationRes?.data || locationRes;
 
                 if (!actualData) return;
 
@@ -103,6 +103,15 @@ const Tracking = () => {
                         updatedAt: actualData.updatedAt || new Date().toISOString(),
                         busInfo: actualData.busInfo || {}
                     });
+                }
+
+                // Cập nhật danh sách học sinh để lấy status loanDon/loanTra mới nhất
+                const childrenRes = await parentService.getMyChildren();
+                if (childrenRes.success) {
+                    const updated = childrenRes.data.find(s => s.id === selectedStudent.id);
+                    if (updated) {
+                        setSelectedStudent(updated);
+                    }
                 }
 
                 // Cập nhật các điểm dừng (Route Points) - Chỉ làm 1 lần nếu chưa có
@@ -122,19 +131,23 @@ const Tracking = () => {
             }
         };
 
-        fetchLocation();
-        const interval = setInterval(fetchLocation, 3000);
+        fetchData();
+        const interval = setInterval(fetchData, 3000);
         return () => clearInterval(interval);
     }, [selectedStudent, routePoints]);
 
-    // --- 3. VẼ ĐƯỜNG ĐI (OSRM) ---
+    // --- 3. VẼ ĐƯỜNG ĐI (OSRM) - THÊM TRƯỜNG HỌC LÀM ĐIỂM CUỐI ---
     useEffect(() => {
         if (!routePoints || routePoints.length < 2) return;
 
         const fetchOSRM = async () => {
             try {
+                // Thêm trường học (10.762622, 106.660172) vào cuối danh sách điểm dừng
+                const schoolLocation = { lat: 10.762622, lng: 106.660172, name: "Trường học" };
+                const allPoints = [...routePoints, schoolLocation];
+
                 // Tạo chuỗi tọa độ cho OSRM: lng,lat;lng,lat
-                const coordinates = routePoints.map(p => `${p.lng},${p.lat}`).join(';');
+                const coordinates = allPoints.map(p => `${p.lng},${p.lat}`).join(';');
                 const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
 
                 const res = await fetch(url);
@@ -146,10 +159,13 @@ const Tracking = () => {
                     setPolyLineCoords(decodedPath);
                 } else {
                     // Fallback: Vẽ đường thẳng nối các điểm nếu OSRM lỗi
-                    setPolyLineCoords(routePoints.map(p => [p.lat, p.lng]));
+                    setPolyLineCoords(allPoints.map(p => [p.lat, p.lng]));
                 }
             } catch (err) {
-                setPolyLineCoords(routePoints.map(p => [p.lat, p.lng]));
+                // Fallback khi OSRM lỗi
+                const schoolLocation = { lat: 10.762622, lng: 106.660172 };
+                const allPoints = [...routePoints, schoolLocation];
+                setPolyLineCoords(allPoints.map(p => [p.lat, p.lng]));
             }
         };
 

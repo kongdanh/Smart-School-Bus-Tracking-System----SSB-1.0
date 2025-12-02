@@ -1,73 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import schoolService from '../../services/schoolService';
+import { toast } from 'react-toastify';
 import '../../styles/school-styles/school-drivers.css';
 
 const Drivers = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [drivers, setDrivers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data từ Prisma schema
-  const [drivers] = useState([
-    {
-      taiXeId: 1,
-      hoTen: 'Nguyễn Văn An',
-      soDienThoai: '+84 901 234 567',
-      bienSoCapphep: 'B2-12345',
-      trangThai: 'active',
-      gioHeBay: 4.8,
-      soChuyenHT: 245,
-      busNumber: '29B-12345',
-      route: 'Route A',
-      avatar: 'N'
-    },
-    {
-      taiXeId: 2,
-      hoTen: 'Trần Văn Bình',
-      soDienThoai: '+84 902 345 678',
-      bienSoCapphep: 'B2-23456',
-      trangThai: 'active',
-      gioHeBay: 4.5,
-      soChuyenHT: 198,
-      busNumber: '29B-67890',
-      route: 'Route B',
-      avatar: 'T'
-    },
-    {
-      taiXeId: 3,
-      hoTen: 'Lê Thị Cẩm',
-      soDienThoai: '+84 903 456 789',
-      bienSoCapphep: 'B2-34567',
-      trangThai: 'inactive',
-      gioHeBay: 4.7,
-      soChuyenHT: 312,
-      busNumber: '29B-11111',
-      route: 'Route C',
-      avatar: 'L'
-    },
-    {
-      taiXeId: 4,
-      hoTen: 'Phạm Văn Dũng',
-      soDienThoai: '+84 904 567 890',
-      bienSoCapphep: 'B2-45678',
-      trangThai: 'active',
-      gioHeBay: 4.9,
-      soChuyenHT: 156,
-      busNumber: '29B-22222',
-      route: 'Route D',
-      avatar: 'P'
-    },
-    {
-      taiXeId: 5,
-      hoTen: 'Hoàng Văn Em',
-      soDienThoai: '+84 905 678 901',
-      bienSoCapphep: 'B2-56789',
-      trangThai: 'active',
-      gioHeBay: 4.6,
-      soChuyenHT: 289,
-      busNumber: '29B-33333',
-      route: 'Route E',
-      avatar: 'H'
+  useEffect(() => {
+    fetchDrivers();
+  }, []);
+
+  const fetchDrivers = async () => {
+    try {
+      setLoading(true);
+      const response = await schoolService.getAllDrivers();
+
+      if (response.success) {
+        setDrivers(response.data || []);
+      } else {
+        toast.warning("Không thể tải danh sách tài xế");
+      }
+    } catch (error) {
+      console.error('Error fetching drivers:', error);
+      toast.error("Lỗi khi tải danh sách tài xế");
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const filteredDrivers = drivers.filter(driver => {
     const matchesSearch = driver.hoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -250,7 +214,10 @@ const Drivers = () => {
               </div>
 
               <div className="driver-actions">
-                <button className="btn-primary">
+                <button
+                  className="btn-primary"
+                  onClick={() => navigate(`/school/drivers/${driver.taiXeId || driver.id}`)}
+                >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />

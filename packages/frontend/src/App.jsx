@@ -32,6 +32,9 @@ import SchoolBuses from "./pages/school/Buses";
 import SchoolRoutes from "./pages/school/Routes";
 import SchoolTracking from "./pages/school/Tracking";
 import SchoolNotifications from "./pages/school/Notifications";
+import SchoolCreateSchedule from "./pages/school/CreateSchedule";
+import SchoolAddRoute from "./pages/school/AddRoute";
+import SchoolDriverDetail from "./pages/school/DriverDetail";
 
 // protected route component
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -217,10 +220,13 @@ function App() {
             <Route path="dashboard" element={<SchoolDashboard />} />
             <Route path="students" element={<SchoolStudents />} />
             <Route path="drivers" element={<SchoolDrivers />} />
+            <Route path="drivers/:id" element={<SchoolDriverDetail />} />
             <Route path="buses" element={<SchoolBuses />} />
             <Route path="routes" element={<SchoolRoutes />} />
+            <Route path="add-route" element={<SchoolAddRoute />} />
             <Route path="tracking" element={<SchoolTracking />} />
             <Route path="notifications" element={<SchoolNotifications />} />
+            <Route path="create-schedule" element={<SchoolCreateSchedule />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 

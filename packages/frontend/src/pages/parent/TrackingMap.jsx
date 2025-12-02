@@ -18,9 +18,11 @@ const busIcon = new L.Icon({
     popupAnchor: [0, -20]
 });
 
-const createIndexIcon = (number) => {
+const createIndexIcon = (number, isSchool = false) => {
+    const bgColor = isSchool ? '#dc2626' : '#2563eb'; // Red for school, blue for stops
+    const label = isSchool ? '🏫' : number;
     return L.divIcon({
-        html: `<div style="background-color: #2563eb; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${number}</div>`,
+        html: `<div style="background-color: ${bgColor}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${label}</div>`,
         className: 'custom-div-icon',
         iconSize: [24, 24],
         iconAnchor: [12, 12]
@@ -168,7 +170,7 @@ const TrackingMap = ({ busData, routePoints, polyLineCoords }) => {
 
                 {/* STOP MARKERS */}
                 {routePoints && routePoints.length > 0 && routePoints.map((p, idx) => (
-                    <Marker key={`stop-${idx}`} position={[p.lat, p.lng]} icon={createIndexIcon(idx + 1)}>
+                    <Marker key={`stop-${idx}`} position={[p.lat, p.lng]} icon={createIndexIcon(idx + 1, false)}>
                         <Popup>
                             <strong>{p.name || `Trạm dừng ${idx + 1}`}</strong>
                             <br />
@@ -176,6 +178,19 @@ const TrackingMap = ({ busData, routePoints, polyLineCoords }) => {
                         </Popup>
                     </Marker>
                 ))}
+
+                {/* SCHOOL MARKER (RETURN POINT) */}
+                <Marker
+                    position={[10.762622, 106.660172]}
+                    icon={createIndexIcon(null, true)}
+                    zIndexOffset={500}
+                >
+                    <Popup>
+                        <strong>🏫 Trường học (Điểm cuối)</strong>
+                        <br />
+                        <small>Quay lại trường sau khi trả hết học sinh</small>
+                    </Popup>
+                </Marker>
 
                 {/* DEBUG INFO */}
                 {(!memoPolyLineCoords || memoPolyLineCoords.length === 0) && routePoints.length > 0 && (

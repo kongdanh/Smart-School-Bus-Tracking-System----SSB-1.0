@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import schoolService from '../../services/schoolService';
+import { toast } from 'react-toastify';
 import '../../styles/school-styles/school-students.css';
 
 const Students = () => {
@@ -6,14 +8,30 @@ const Students = () => {
   const [filterClass, setFilterClass] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const students = [
-    { hocSinhId: 1, maHS: 'HS001', hoTen: 'Nguyễn Minh An', lop: '5A', diemDon: 'Điểm A - Đường Nguyễn Hữu Cảnh, Q. Bình Thạnh', diemTra: 'School - Main Gate', avatar: 'N', soDienThoaiPH: '+84 901 234 567', phuHuynh: 'Nguyễn Văn Phụ Huynh', status: 'active', route: 'Route A' },
-    { hocSinhId: 2, maHS: 'HS002', hoTen: 'Trần Thị Bích', lop: '4B', diemDon: 'Điểm B - Đường Lê Lợi, Q.1', diemTra: 'School - Main Gate', avatar: 'T', soDienThoaiPH: '+84 902 345 678', phuHuynh: 'Trần Văn Parent', status: 'active', route: 'Route B' },
-    { hocSinhId: 3, maHS: 'HS003', hoTen: 'Lê Văn Cường', lop: '3A', diemDon: 'Điểm C - Đường Hùng Vương, Q.5', diemTra: 'School - Side Gate', avatar: 'L', soDienThoaiPH: '+84 903 456 789', phuHuynh: 'Lê Thị Parent', status: 'active', route: 'Route C' },
-    { hocSinhId: 4, maHS: 'HS004', hoTen: 'Phạm Thị Dung', lop: '5A', diemDon: 'Điểm A - Đường Nguyễn Hữu Cảnh', diemTra: 'School - Main Gate', avatar: 'P', soDienThoaiPH: '+84 904 567 890', phuHuynh: 'Phạm Văn Parent', status: 'inactive', route: 'Route A' },
-    { hocSinhId: 5, maHS: 'HS005', hoTen: 'Hoàng Văn Em', lop: '4B', diemDon: 'Điểm B - Đường Lê Lợi', diemTra: 'School - Main Gate', avatar: 'H', soDienThoaiPH: '+84 905 678 901', phuHuynh: 'Hoàng Thị Parent', status: 'active', route: 'Route B' }
-  ];
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const response = await schoolService.getAllStudents();
+
+      if (response.success) {
+        setStudents(response.data || []);
+      } else {
+        toast.warning("Không thể tải danh sách học sinh");
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      toast.error("Lỗi khi tải danh sách học sinh");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const classes = ['all', '3A', '4B', '5A'];
   const filteredStudents = students.filter(s => {
@@ -161,7 +179,7 @@ const Students = () => {
                       <span>{student.soDienThoaiPH}</span>
                     </div>
                   </td>
-                  <td><span className={`status-badge ${student.status}`}>{student.status.toUpperCase()}</span></td>
+                  <td><span className={`status-badge ${student?.status || 'unknown'}`}>{student?.status?.toUpperCase() || 'UNKNOWN'}</span></td>
                   <td>
                     <div className="action-buttons">
                       <button className="btn-action view" onClick={() => setSelectedStudent(student)} title="View Details">
@@ -206,7 +224,7 @@ const Students = () => {
                   <div><strong>Parent:</strong> {selectedStudent.phuHuynh}</div>
                   <div><strong>Contact:</strong> {selectedStudent.soDienThoaiPH}</div>
                   <div><strong>Route:</strong> <span className="route-badge">{selectedStudent.route}</span></div>
-                  <div><strong>Status:</strong> <span className={`status-badge ${selectedStudent.status}`}>{selectedStudent.status.toUpperCase()}</span></div>
+                  <div><strong>Status:</strong> <span className={`status-badge ${selectedStudent?.status || 'unknown'}`}>{selectedStudent?.status?.toUpperCase() || 'UNKNOWN'}</span></div>
                   <div className="full-width">
                     <strong>Pickup Point:</strong><br />
                     <span className="location-detail">{selectedStudent.diemDon}</span>

@@ -139,3 +139,63 @@ exports.createSchedule = async (req, res) => {
         });
     }
 };
+
+// Thêm học sinh vào lịch trình
+exports.assignStudentToSchedule = async (req, res) => {
+    try {
+        const { scheduleId, studentId } = req.params;
+
+        // Kiểm tra học sinh tồn tại
+        const student = await prisma.hocsinh.findUnique({
+            where: { hocSinhId: parseInt(studentId) }
+        });
+
+        if (!student) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy học sinh'
+            });
+        }
+
+        // Tạo bản ghi attendance cho học sinh
+        // Cần lấy taiXeId từ lịch trình
+        const schedule = await prisma.lichtrinh.findUnique({
+            where: { lichTrinhId: parseInt(scheduleId) }
+        });
+
+        if (!schedule) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy lịch trình'
+            });
+        }
+
+        // Tạo hoặc cập nhật attendance record
+        const attendance = await prisma.attendance.upsert({
+            where: {
+                lichTrinhId_hocSinhId: {
+                    lichTrinhId: parseInt(scheduleId),
+                    hocSinhId: parseInt(studentId)
+                }
+            },
+            update: {},
+            create: {
+                lichTrinhId: parseInt(scheduleId),
+                hocSinhId: parseInt(studentId),
+                taiXeId: schedule.taiXeId || 1  // Default taiXeId nếu không có
+            }
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Thêm học sinh vào lịch trình thành công',
+            data: attendance
+        });
+    } catch (error) {
+        console.error('Assign student to schedule error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi thêm học sinh vào lịch trình'
+        });
+    }
+};

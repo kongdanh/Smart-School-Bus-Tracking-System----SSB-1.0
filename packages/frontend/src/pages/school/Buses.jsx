@@ -1,83 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import schoolService from '../../services/schoolService';
+import { toast } from 'react-toastify';
 import '../../styles/school-styles/school-buses.css';
 
 const Buses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [buses, setBuses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data từ Prisma schema
-  const [buses] = useState([
-    {
-      xeBuytId: 1,
-      maXe: 'BUS001',
-      bienSo: '29B-12345',
-      sucChua: 45,
-      trangThai: 'active',
-      namSanXuat: 2020,
-      ngayKiemDinh: '2024-12-15',
-      currentStudents: 32,
-      driver: 'Nguyễn Văn An',
-      route: 'Route A',
-      lastMaintenance: '2024-10-01',
-      nextMaintenance: '2025-01-01'
-    },
-    {
-      xeBuytId: 2,
-      maXe: 'BUS002',
-      bienSo: '29B-67890',
-      sucChua: 40,
-      trangThai: 'maintenance',
-      namSanXuat: 2019,
-      ngayKiemDinh: '2024-11-20',
-      currentStudents: 0,
-      driver: '-',
-      route: '-',
-      lastMaintenance: '2024-11-15',
-      nextMaintenance: '2024-11-20'
-    },
-    {
-      xeBuytId: 3,
-      maXe: 'BUS003',
-      bienSo: '29B-11111',
-      sucChua: 50,
-      trangThai: 'active',
-      namSanXuat: 2021,
-      ngayKiemDinh: '2025-01-10',
-      currentStudents: 28,
-      driver: 'Trần Văn Bình',
-      route: 'Route B',
-      lastMaintenance: '2024-09-15',
-      nextMaintenance: '2024-12-15'
-    },
-    {
-      xeBuytId: 4,
-      maXe: 'BUS004',
-      bienSo: '29B-22222',
-      sucChua: 45,
-      trangThai: 'active',
-      namSanXuat: 2020,
-      ngayKiemDinh: '2024-12-30',
-      currentStudents: 35,
-      driver: 'Lê Thị Cẩm',
-      route: 'Route C',
-      lastMaintenance: '2024-10-10',
-      nextMaintenance: '2025-01-10'
-    },
-    {
-      xeBuytId: 5,
-      maXe: 'BUS005',
-      bienSo: '29B-33333',
-      sucChua: 40,
-      trangThai: 'inactive',
-      namSanXuat: 2018,
-      ngayKiemDinh: '2024-10-15',
-      currentStudents: 0,
-      driver: '-',
-      route: '-',
-      lastMaintenance: '2024-08-20',
-      nextMaintenance: '2024-11-20'
+  // Load dữ liệu từ API
+  useEffect(() => {
+    fetchBuses();
+  }, []);
+
+  const fetchBuses = async () => {
+    try {
+      setLoading(true);
+      const response = await schoolService.getAllBuses();
+
+      if (response.success) {
+        setBuses(response.data || []);
+      } else {
+        toast.warning("Không thể tải danh sách xe");
+      }
+    } catch (error) {
+      console.error('Error fetching buses:', error);
+      toast.error("Lỗi khi tải danh sách xe");
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const filteredBuses = buses.filter(bus => {
     const matchesSearch = bus.maXe.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -108,6 +61,17 @@ const Buses = () => {
       default: return status;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="school-buses-container">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <div className="spinner"></div>
+          <p>Loading buses...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="school-buses-container">
