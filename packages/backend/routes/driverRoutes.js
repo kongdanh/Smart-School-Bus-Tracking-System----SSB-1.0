@@ -13,6 +13,9 @@ router.use(protect);
 // Lấy hồ sơ cá nhân (Dựa trên Token, phục vụ trang Settings)
 router.get('/profile', driverController.getDriverProfile);
 
+// Lấy lịch trình hôm nay (Dựa trên Token - tài xế hiện tại)
+router.get('/schedule/today', driverController.getTodaySchedule);
+
 // Lấy danh sách tất cả (Dành cho Admin/Manager)
 // Bạn có thể thêm authorize('school', 'admin') vào đây nếu cần bảo mật hơn
 router.get('/', driverController.getAllDrivers);

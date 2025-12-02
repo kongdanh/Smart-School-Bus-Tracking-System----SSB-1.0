@@ -99,7 +99,7 @@ const driverService = {
         }
     },
 
-    // Lấy lịch trình của tài xế
+    // Lấy lịch trình của tài xế theo ID
     getDriverSchedule: async (id) => {
         try {
             const response = await axiosInstance.get(`/${id}/schedule`);
@@ -110,44 +110,70 @@ const driverService = {
         }
     },
 
-    // Dashboard (MOCK - giữ để tương thích)
+    // Dashboard - Lấy dữ liệu thực từ API
     getDashboard: async () => {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        return {
-            success: true,
-            data: {
-                statistics: {
-                    studentsToday: 28,
-                    completedTrips: 1,
-                    totalTrips: 2,
-                    attendance: 96,
-                    routeDistance: "42.5 km"
-                },
-                schedule: [
-                    {
-                        id: 1,
-                        time: "06:30",
-                        routeName: "Tuyến A1 - Quận 7 → Trường XYZ",
-                        studentCount: 15,
-                        stops: 8,
-                        status: "completed"
-                    },
-                    {
-                        id: 2,
-                        time: "07:15",
-                        routeName: "Tuyến A2 - Quận 7 → Trường XYZ",
-                        studentCount: 13,
-                        stops: 7,
-                        status: "pending"
-                    }
-                ],
-                checkInStatus: true,
-                currentTrip: {
-                    id: 2,
-                    routeName: "Tuyến A2 - Quận 7 → Trường XYZ"
-                }
+        try {
+            // Lấy profile của tài xế đang đăng nhập
+            const profileRes = await axiosInstance.get('/profile');
+            if (!profileRes.success) {
+                throw new Error('Không thể lấy thông tin tài xế');
             }
-        };
+
+            const driver = profileRes.data;
+
+            // Lấy lịch trình hôm nay của tài xế đang đăng nhập
+            const scheduleRes = await axiosInstance.get('/schedule/today');
+            const todaySchedules = scheduleRes.data || [];
+
+            // Tìm lịch trình đang chạy (có status = 'in_progress')
+            const currentTrip = todaySchedules.find(s => s.trangThai === 'in_progress');
+
+            // Tính toán stats
+            const completedToday = todaySchedules.filter(s => s.trangThai === 'completed').length;
+            const totalTrips = todaySchedules.length;
+
+            // Lấy số học sinh từ studenttrip array
+            const studentCount = currentTrip?.studenttrip?.length || 0;
+
+            return {
+                success: true,
+                data: {
+                    stats: {
+                        totalTrips: totalTrips,
+                        completedToday: completedToday,
+                        studentsOnBoard: studentCount,
+                        rating: driver.gioHeBay || 0
+                    },
+                    currentTrip: currentTrip ? {
+                        id: currentTrip.lichTrinhId,
+                        routeName: currentTrip.tuyenduong?.tenTuyen || 'N/A',
+                        busNumber: currentTrip.xebuyt?.bienSoXe || 'N/A',
+                        startTime: currentTrip.gioKhoiHanh,
+                        currentStop: `Stop 1 of ${currentTrip.tuyenduong?.tuyenduong_diemdung?.length || 0}`,
+                        studentsCount: studentCount
+                    } : null,
+                    checkedIn: true,
+                    schedules: todaySchedules
+                }
+            };
+        } catch (error) {
+            console.error('Error getting dashboard:', error);
+            // Fallback to empty data nếu API lỗi
+            return {
+                success: false,
+                data: {
+                    stats: {
+                        totalTrips: 0,
+                        completedToday: 0,
+                        studentsOnBoard: 0,
+                        rating: 0
+                    },
+                    currentTrip: null,
+                    checkedIn: false,
+                    schedules: []
+                }
+            };
+        }
     },
 
     checkIn: async () => {

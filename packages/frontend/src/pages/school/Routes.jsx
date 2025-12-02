@@ -153,7 +153,7 @@ export default function SchoolRoutes() {
               <div className="detail-section" style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #333' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '8px', color: '#e94560' }}>Thông Tin Cơ Bản</h3>
                 <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Mã Lịch Trình:</strong> {selectedRoute.id}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Trạng Thái:</strong> 
+                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Trạng Thái:</strong>
                   <span style={{ marginLeft: '8px', padding: '2px 8px', borderRadius: '4px', backgroundColor: selectedRoute.status === 'stopped' ? '#f59e0b' : '#10b981', color: 'white', fontSize: '12px' }}>
                     {selectedRoute.statusText}
                   </span>

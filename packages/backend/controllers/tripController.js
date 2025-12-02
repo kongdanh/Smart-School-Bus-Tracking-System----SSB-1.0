@@ -179,10 +179,30 @@ exports.getDriverDashboard = async (req, res) => {
                 }
             },
             include: {
-                tuyenduong: true,
+                tuyenduong: {
+                    include: {
+                        tuyenduong_diemdung: {
+                            include: { diemdung: true },
+                            orderBy: { thuTu: 'asc' }
+                        }
+                    }
+                },
                 xebuyt: true,
                 tripRecords: {
                     where: { taiXeId: taiXeId }
+                },
+                studenttrip: {
+                    include: {
+                        hocsinh: {
+                            select: {
+                                hocSinhId: true,
+                                hoTen: true,
+                                maHS: true,
+                                lop: true,
+                                avatar: true
+                            }
+                        }
+                    }
                 }
             },
             orderBy: { gioKhoiHanh: 'asc' }
