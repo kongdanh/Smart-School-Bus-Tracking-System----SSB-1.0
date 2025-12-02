@@ -2,20 +2,44 @@
 import axios from "axios";
 import { startAutoLogoutTimer, clearAutoLogoutTimer } from "../utils/autoLogout";
 
+// === CẤU HÌNH MOCK MODE ===
+const MOCK_MODE = false; // Đổi thành false nếu muốn dùng backend thật
+
 const API_URL = "http://localhost:5000/api/auth";
 
-// Tạo axios instance riêng để tránh conflict với global axios
-const axiosInstance = axios.create({
-  baseURL: API_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
+// Dữ liệu giả lập cho 3 role
+const mockUsers = {
+  school: {
+    user: {
+      userId: 1,
+      hoTen: "Quản trị viên Trường",
+      email: "school@demo.com",
+      role: "school"
+    },
+    token: "mock-jwt-token-school-123456"
+  },
+  parent: {
+    user: {
+      userId: 2,
+      hoTen: "Phụ huynh Nguyễn Văn A",
+      email: "parent@demo.com",
+      role: "parent"
+    },
+    token: "mock-jwt-token-parent-123456"
+  },
+  driver: {
+    user: {
+      userId: 3,
+      hoTen: "Tài xế Trần Văn Nam",
+      email: "driver@demo.com",
+      role: "driver"
+    },
+    token: "mock-jwt-token-driver-123456"
   }
-});
+};
 
-// ===== REQUEST INTERCEPTOR =====
-// Tự động thêm token vào mọi request
-axiosInstance.interceptors.request.use(
+// Thêm token vào header
+axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -23,32 +47,18 @@ axiosInstance.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    console.error("Request error:", error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// ===== RESPONSE INTERCEPTOR =====
-// Xử lý khi token hết hạn (401)
-axiosInstance.interceptors.response.use(
+// Xử lý 401 → logout
+axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.log("❌ Token hết hạn hoặc không hợp lệ (401)");
-
-      // Xóa dữ liệu
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      localStorage.removeItem("justLoggedIn");
-
-      // Dừng auto logout timer
       clearAutoLogoutTimer();
-
-      // Chỉ redirect nếu không phải trang login
       if (window.location.pathname !== "/login") {
-        // Lưu flag để hiển thị thông báo
-        localStorage.setItem("sessionExpired", "true");
         window.location.href = "/login";
       }
     }
@@ -56,139 +66,114 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-// ===== AUTH SERVICE =====
 const authService = {
-  /**
-   * ĐĂNG NHẬP
-   */
+  // ĐĂNG NHẬP
   login: async (email, password) => {
-    try {
-      const response = await axiosInstance.post("/login", {
-        email,
-        password
-      });
-
+    if (!MOCK_MODE) {
+      // DÙNG BACKEND THẬT
+      const response = await axios.post(`http://localhost:5000/api/auth/login`, { email, password });
       if (response.data.success) {
         const { token, user } = response.data.data;
-
-        // Lưu vào localStorage
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
         localStorage.setItem("justLoggedIn", "true");
-
-        console.log("✅ Đăng nhập thành công, bắt đầu auto logout timer");
-
-        // BẮT ĐẦU AUTO LOGOUT TIMER
         startAutoLogoutTimer();
       }
-
       return response.data;
-    } catch (error) {
-      console.error("Login error:", error);
+    }
+
+    // === MOCK MODE: GIẢ LẬP ĐĂNG NHẬP ===
+    await new Promise(resolve => setTimeout(resolve, 800)); // Giả lập delay
+
+    let mockUser = null;
+
+    // Xác định role theo email
+    if (email.includes("school")) mockUser = mockUsers.school;
+    else if (email.includes("parent")) mockUser = mockUsers.parent;
+    else if (email.includes("driver")) mockUser = mockUsers.driver;
+
+    if (!mockUser) {
       return {
         success: false,
-        message: error.response?.data?.message || "Đăng nhập thất bại"
+        message: "Email không hợp lệ. Dùng: school@demo.com, parent@demo.com, driver@demo.com"
       };
     }
-  },
 
-  /**
-   * ĐĂNG XUẤT
-   */
-  logout: async () => {
-    try {
-      // Gọi API logout (nếu backend có endpoint này)
-      await axiosInstance.post("/logout");
-    } catch (error) {
-      console.error("Logout API error:", error);
-      // Vẫn tiếp tục logout ở client
-    } finally {
-      // Xóa dữ liệu
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("justLoggedIn");
+    // Lưu vào localStorage
+    localStorage.setItem("token", mockUser.token);
+    localStorage.setItem("user", JSON.stringify(mockUser.user));
+    localStorage.setItem("justLoggedIn", "true");
 
-      console.log("🔴 Đăng xuất, dừng auto logout timer");
+    // Bắt đầu timer tự động logout
+    startAutoLogoutTimer();
 
-      // DỪNG AUTO LOGOUT TIMER
-      clearAutoLogoutTimer();
-
-      // Redirect về login
-      window.location.href = "/login";
-    }
-  },
-
-  /**
-   * LẤY THÔNG TIN USER TỪ LOCALSTORAGE
-   */
-  getCurrentUser: () => {
-    try {
-      const userStr = localStorage.getItem("user");
-      return userStr ? JSON.parse(userStr) : null;
-    } catch (error) {
-      console.error("Get current user error:", error);
-      return null;
-    }
-  },
-
-  /**
-   * LẤY THÔNG TIN USER TỪ SERVER (refresh data)
-   */
-  fetchCurrentUser: async () => {
-    try {
-      const response = await axiosInstance.get("/me");
-
-      if (response.data.success) {
-        const user = response.data.user || response.data.data;
-        localStorage.setItem("user", JSON.stringify(user));
-        return user;
+    return {
+      success: true,
+      data: {
+        token: mockUser.token,
+        user: mockUser.user
       }
-
-      return null;
-    } catch (error) {
-      console.error("Fetch current user error:", error);
-      return authService.getCurrentUser();
-    }
+    };
   },
 
-  /**
-   * LẤY TOKEN
-   */
+  // ĐĂNG XUẤT
+  logout: async () => {
+    if (!MOCK_MODE) {
+      try {
+        await axios.post(`http://localhost:5000/api/auth/logout`);
+      } catch (error) {
+        console.error("Logout error:", error);
+      }
+    }
+
+    // Xóa dữ liệu
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("justLoggedIn");
+    clearAutoLogoutTimer();
+
+    // Chuyển về login
+    window.location.href = "/login";
+  },
+
+  // LẤY USER HIỆN TẠI
+  getCurrentUser: () => {
+    const userStr = localStorage.getItem("user");
+    return userStr ? JSON.parse(userStr) : null;
+  },
+
+  // LẤY TOKEN
   getToken: () => {
     return localStorage.getItem("token");
   },
 
-  /**
-   * KIỂM TRA ĐÃ ĐĂNG NHẬP
-   */
+  // KIỂM TRA ĐÃ ĐĂNG NHẬP
   isAuthenticated: () => {
     return !!localStorage.getItem("token");
   },
 
-  /**
-   * KIỂM TRA ROLE CỤ THỂ
-   */
+  // KIỂM TRA ROLE
   hasRole: (role) => {
     const user = authService.getCurrentUser();
     return user?.role === role;
   },
 
-  /**
-   * KIỂM TRA CÓ MỘT TRONG CÁC ROLE
-   */
+  // KIỂM TRA CÓ MỘT TRONG CÁC ROLE
   hasAnyRole: (roles) => {
     const user = authService.getCurrentUser();
     return roles.includes(user?.role);
   },
 
-  /**
-   * KHỞI ĐỘNG LẠI AUTO LOGOUT (dùng khi refresh page)
-   */
-  initAutoLogout: () => {
-    if (authService.isAuthenticated()) {
-      console.log("🔄 Khởi động lại auto logout timer sau khi refresh");
-      startAutoLogoutTimer();
+  // GIẢ LẬP LẤY USER TỪ SERVER
+  fetchCurrentUser: async () => {
+    if (!MOCK_MODE) {
+      const response = await axios.get(`http://localhost:5000/api/auth/me`);
+      if (response.data.success) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        return response.data.user;
+      }
     }
+    return authService.getCurrentUser();
   }
 };
 
