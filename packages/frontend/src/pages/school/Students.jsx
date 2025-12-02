@@ -42,6 +42,9 @@ const Students = () => {
       (filterClass === 'all' || s.lop === filterClass);
   });
 
+  // Get actual classes from data
+  const actualClasses = ['all', ...new Set(students.map(s => s.lop).filter(Boolean))].sort();
+
   return (
     <>
       <div className="school-students-container">
@@ -99,7 +102,7 @@ const Students = () => {
           <div className="filter-group">
             <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="filter-select">
               <option value="all">All Classes</option>
-              {classes.filter(c => c !== 'all').map(cls => <option key={cls} value={cls}>Class {cls}</option>)}
+              {actualClasses.filter(c => c !== 'all').map(cls => <option key={cls} value={cls}>Class {cls}</option>)}
             </select>
 
             <button className="btn-export-old" onClick={() => exportStudents(filteredStudents)}>
