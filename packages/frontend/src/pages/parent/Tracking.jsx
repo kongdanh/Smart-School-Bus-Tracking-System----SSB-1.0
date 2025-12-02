@@ -1,50 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import L from 'leaflet';
-// import 'leaflet/dist/leaflet.css'; // Không cần dòng này nữa vì đã thêm ở index.html
 import parentService from '../../services/parentService';
+import TrackingMap from './TrackingMap';
 import '../../styles/parent-styles/parent-tracking.css';
 
-// --- 1. CONFIG ICON ---
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-const busIcon = new L.Icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-    iconSize: [45, 45],
-    iconAnchor: [22, 22],
-    popupAnchor: [0, -20]
-});
-
-// --- 2. COMPONENT ĐIỀU KHIỂN CAMERA & FIX LỖI RENDER ---
-const MapHandler = ({ center }) => {
-    const map = useMap();
-
-    useEffect(() => {
-        // Fix lỗi map bị xám/lệch khi mới load
-        const timer = setTimeout(() => {
-            map.invalidateSize();
-        }, 400);
-
-        if (center) {
-            // Di chuyển camera mượt mà
-            map.flyTo(center, map.getZoom() > 13 ? map.getZoom() : 13, {
-                duration: 1.5,
-                easeLinearity: 0.25
-            });
-        }
-        return () => clearTimeout(timer);
-    }, [map, center]);
-
-    return null;
-};
-
-// --- 3. COMPONENT CHÍNH ---
+// --- COMPONENT CHÍNH ---
 const Tracking = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -54,7 +14,7 @@ const Tracking = () => {
     const [busData, setBusData] = useState(null);
 
     // State lưu danh sách điểm dừng (để vẽ Marker các trạm)
-    const [routePath, setRoutePath] = useState([]);
+    const [routePoints, setRoutePoints] = useState([]);
 
     // State lưu tọa độ đường đi thực tế từ OSRM (để vẽ Polyline màu xanh)
     const [polyLineCoords, setPolyLineCoords] = useState([]);
@@ -89,13 +49,21 @@ const Tracking = () => {
         const fetchLocation = async () => {
             try {
                 const res = await parentService.getBusLocation(selectedStudent.id);
+                console.log("🔍 [Frontend] Tracking API Response:", res);
+
                 const actualData = res?.data?.data || res?.data || res;
+                console.log("🔍 [Frontend] Processed data:", actualData);
 
-                if (!actualData) return;
+                if (!actualData) {
+                    console.warn("⚠️ No data from tracking API");
+                    return;
+                }
 
-                // Cập nhật vị trí xe
+                // Cập nhật vị trí xe (BUS POSITION CÓ THỂ ĐỔI LIÊN TỤC)
                 const busLat = parseFloat(actualData.lat || actualData.vido);
                 const busLng = parseFloat(actualData.lng || actualData.kinhdo);
+                console.log(`📍 [Frontend] Bus location: ${busLat}, ${busLng}`);
+
                 if (!isNaN(busLat) && !isNaN(busLng)) {
                     setBusData({
                         lat: busLat,
@@ -105,74 +73,101 @@ const Tracking = () => {
                     });
                 }
 
-                // Cập nhật danh sách điểm dừng (Route Points)
+                // Cập nhật danh sách điểm dừng (ROUTE POINTS CHỈ CẬP NHẬT LẦN ĐẦU TIÊN)
+                // Nếu routePoints đã có, không cập nhật lại
+                if (routePoints.length > 0) {
+                    console.log("ℹ️ [Frontend] Route points already set, skipping update");
+                    return;
+                }
+
                 const rawRoute = actualData.routePath;
+                console.log(`🛣️  [Frontend] Raw route from API:`, rawRoute);
+                console.log(`🛣️  [Frontend] Route type:`, Array.isArray(rawRoute) ? `Array(${rawRoute.length})` : typeof rawRoute);
+
                 if (Array.isArray(rawRoute) && rawRoute.length >= 2) {
-                    const validRoute = rawRoute.map((stop, idx) => {
+                    const validPoints = rawRoute.map((stop, idx) => {
                         const lat = parseFloat(stop?.lat || stop?.vido);
                         const lng = parseFloat(stop?.lng || stop?.kinhdo);
                         const name = stop?.name || stop?.tenDiemDung || `Điểm ${idx + 1}`;
-                        if (!isNaN(lat) && !isNaN(lng)) return { lat, lng, name };
+
+                        console.log(`  Stop ${idx}: lat=${lat}, lng=${lng}, name=${name}`);
+
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            return { lat, lng, name };
+                        }
+                        console.warn(`  ⚠️ Stop ${idx} invalid: lat=${lat}, lng=${lng}`);
                         return null;
                     }).filter(Boolean);
 
-                    // Chỉ update state nếu dữ liệu thay đổi (deep comparison đơn giản)
-                    if (validRoute.length >= 2) {
-                        setRoutePath(prev => JSON.stringify(prev) !== JSON.stringify(validRoute) ? validRoute : prev);
+                    console.log(`✅ [Frontend] Valid route points: ${validPoints.length}`, validPoints);
+
+                    // Set once
+                    if (validPoints.length >= 2) {
+                        setRoutePoints(validPoints);
                     }
+                } else {
+                    console.warn(`⚠️ Route not array or < 2 points`);
                 }
             } catch (err) {
-                console.error("Lỗi tracking:", err);
+                console.error("❌ [Frontend] Tracking error:", err);
             }
         };
 
         fetchLocation();
-        const interval = setInterval(fetchLocation, 3000); // Polling mỗi 3s
+        const interval = setInterval(fetchLocation, 3000); // Polling mỗi 3s CHỈ bus position
         return () => clearInterval(interval);
-    }, [selectedStudent]);
+    }, [selectedStudent, routePoints]); // routePoints trong deps để detect khi set
 
-    // 2. Gọi OSRM API để lấy đường đi chi tiết (Chỉ chạy khi routePath thay đổi)
+    // 2. Gọi OSRM API để lấy đường đi chi tiết (Chỉ chạy khi routePoints thay đổi)
     useEffect(() => {
-        if (!routePath || routePath.length < 2) {
-            setPolyLineCoords([]);
+        if (!routePoints || routePoints.length < 2) {
+            console.log("⚠️ [OSRM] Not enough route points:", routePoints?.length || 0);
             return;
         }
 
         const fetchOSRM = async () => {
-            // Lấy mẫu (Sampling) để giảm độ dài URL nếu có quá nhiều điểm
-            const step = Math.ceil(routePath.length / 20);
-            const waypoints = routePath.filter((_, i) => i === 0 || i === routePath.length - 1 || i % step === 0);
-
-            // Format tọa độ: {lng},{lat}
-            const coordinates = waypoints.map(p => `${p.lng},${p.lat}`).join(';');
-            const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
-
             try {
+                console.log(`🚀 [OSRM] Starting with ${routePoints.length} points`);
+
+                // Format tọa độ: {lng},{lat}
+                const coordinates = routePoints.map(p => `${p.lng},${p.lat}`).join(';');
+                const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+
+                console.log(`🌐 [OSRM] Calling: ${url.substring(0, 100)}...`);
+
                 const res = await fetch(url);
                 const data = await res.json();
+
+                console.log(`🔍 [OSRM] Response code:`, data.code);
 
                 if (data.code === 'Ok' && data.routes?.[0]) {
                     // Convert GeoJSON [Lng, Lat] -> Leaflet [Lat, Lng]
                     const decodedPath = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    console.log(`✅ [OSRM] Got ${decodedPath.length} polyline points`);
+                    console.log(`   First 3 points:`, decodedPath.slice(0, 3));
+                    console.log(`   Type of first point:`, typeof decodedPath[0], Array.isArray(decodedPath[0]));
                     setPolyLineCoords(decodedPath);
                 } else {
+                    console.warn(`⚠️ [OSRM] Failed with code ${data.code}, using fallback direct line`);
                     // Fallback: Nếu OSRM lỗi, vẽ đường thẳng nối các điểm dừng
-                    console.warn("OSRM không tìm thấy đường, dùng đường thẳng fallback");
-                    setPolyLineCoords(routePath.map(p => [p.lat, p.lng]));
+                    const fallback = routePoints.map(p => [p.lat, p.lng]);
+                    setPolyLineCoords(fallback);
                 }
             } catch (err) {
-                console.error("Lỗi kết nối OSRM", err);
+                console.error("❌ [OSRM] Error:", err);
                 // Fallback khi lỗi mạng
-                setPolyLineCoords(routePath.map(p => [p.lat, p.lng]));
+                const fallback = routePoints.map(p => [p.lat, p.lng]);
+                console.log("📍 [OSRM] Using fallback with", fallback.length, "points");
+                setPolyLineCoords(fallback);
             }
         };
 
         fetchOSRM();
-    }, [routePath]);
+    }, [routePoints]); // Chỉ run khi routePoints thay đổi
 
     const handleBack = () => {
         setSelectedStudent(null);
-        setRoutePath([]);
+        setRoutePoints([]);
         setPolyLineCoords([]);
         setBusData(null);
         navigate('/parent/tracking', { replace: true, state: {} });
@@ -192,71 +187,67 @@ const Tracking = () => {
     if (selectedStudent) {
         return (
             <div className="tracking-detail-container">
-                <div className="detail-header" style={{ marginBottom: '16px' }}>
+                <div className="detail-header">
                     <button onClick={handleBack} className="btn-back">← Quay lại danh sách</button>
                     <div className="detail-title">
-                        <h2>Lộ trình: {selectedStudent.name}</h2>
+                        <h2>{selectedStudent.name}</h2>
                     </div>
                 </div>
 
-                <div className="map-container" style={{
-                    position: 'relative',
-                    height: '75vh',
-                    width: '100%',
-                    zIndex: 0,
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                }}>
-                    <MapContainer
-                        center={busPosition}
-                        zoom={13}
-                        style={{ height: '100%', width: '100%' }}
-                        scrollWheelZoom={true}
-                    >
-                        <TileLayer
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            attribution='&copy; OpenStreetMap'
-                        />
+                {/* USE NEW TRACKING MAP COMPONENT */}
+                <TrackingMap
+                    busData={busData}
+                    routePoints={routePoints}
+                    polyLineCoords={polyLineCoords}
+                />
 
-                        {/* 1. Xử lý camera & fix lỗi render */}
-                        <MapHandler center={busPosition} />
+                {/* Phần thông tin chi tiết bên dưới Map */}
+                <div className="detail-info-grid">
+                    <div className="info-card">
+                        <div className="info-icon bus">🚌</div>
+                        <h3>Thông tin chuyến xe</h3>
+                        <div className="info-item">
+                            <span className="info-label">Biển số:</span>
+                            <span className="info-value highlight">
+                                {busData?.busInfo?.plate || selectedStudent.busPlate || "Đang cập nhật"}
+                            </span>
+                        </div>
+                        <div className="info-item">
+                            <span className="info-label">Tài xế:</span>
+                            <span className="info-value">
+                                {busData?.busInfo?.driver || selectedStudent.driver || "Đang cập nhật"}
+                            </span>
+                        </div>
+                        <div className="info-item">
+                            <span className="info-label">Tuyến đường:</span>
+                            <span className="info-value">
+                                {busData?.busInfo?.routeName || "Đang cập nhật"}
+                            </span>
+                        </div>
+                    </div>
 
-                        {/* 2. VẼ TUYẾN ĐƯỜNG (Polyline) */}
-                        {polyLineCoords.length > 0 && (
-                            <Polyline
-                                key={`route-${polyLineCoords.length}`} // Key quan trọng để React vẽ lại
-                                positions={polyLineCoords}
-                                pathOptions={{
-                                    color: '#2563eb', // Màu xanh dương
-                                    weight: 6,
-                                    opacity: 0.8,
-                                    lineJoin: 'round',
-                                    lineCap: 'round'
-                                }}
-                            />
-                        )}
-
-                        {/* 3. MARKER XE BUÝT */}
-                        {busData && (
-                            <Marker position={busPosition} icon={busIcon}>
-                                <Popup>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <strong>{busData.busInfo?.plate || "Xe buýt"}</strong><br />
-                                        <small>{busData.busInfo?.driver}</small>
-                                    </div>
-                                </Popup>
-                            </Marker>
-                        )}
-
-                        {/* 4. MARKER CÁC ĐIỂM DỪNG */}
-                        {routePath.map((p, idx) => (
-                            <Marker key={`stop-${idx}`} position={[p.lat, p.lng]}>
-                                <Popup>{p.name || `Trạm dừng ${idx + 1}`}</Popup>
-                            </Marker>
-                        ))}
-
-                    </MapContainer>
+                    <div className="info-card">
+                        <div className="info-icon student">📍</div>
+                        <h3>Trạng thái học sinh</h3>
+                        <div className="info-item">
+                            <span className="info-label">Điểm đón:</span>
+                            <span className="info-value">{selectedStudent.pickupPoint}</span>
+                        </div>
+                        <div className="info-item">
+                            <span className="info-label">Trạng thái:</span>
+                            <span className={`status-badge small ${selectedStudent.status === 'on-bus' ? 'status-on-bus' : 'status-waiting'}`}>
+                                <span className="status-dot"></span>
+                                {selectedStudent.status === 'on-bus' ? 'Đang trên xe' :
+                                    selectedStudent.status === 'arrived' ? 'Đã đến nơi' : 'Đang chờ'}
+                            </span>
+                        </div>
+                        <div className="info-item">
+                            <span className="info-label">Cập nhật:</span>
+                            <span className="info-value" style={{ color: '#16a34a' }}>
+                                {busData ? new Date(busData.updatedAt).toLocaleTimeString('vi-VN') : '--:--'}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
@@ -268,7 +259,7 @@ const Tracking = () => {
             <div className="tracking-header">
                 <div className="header-content-tracking">
                     <h1>Theo dõi trực tiếp</h1>
-                    <p className="tracking-subtitle">Chọn học sinh để xem vị trí xe trên bản đồ</p>
+                    <p className="tracking-subtitle">Xem vị trí xe và lộ trình di chuyển của học sinh</p>
                 </div>
             </div>
             <div className="students-grid">
@@ -277,13 +268,15 @@ const Tracking = () => {
                         <div className="card-header">
                             <div className="student-avatar">{student.name?.charAt(0)}</div>
                             <div className={`status-indicator ${student.status === 'on-bus' ? 'status-on-bus' : 'status-waiting'}`}>
-                                {student.status === 'on-bus' ? '🚌' : '📍'}
+                                {student.status === 'on-bus' ? '🚌' : student.status === 'arrived' ? '✓' : '⏳'}
                             </div>
                         </div>
                         <div className="card-content">
                             <h3>{student.name}</h3>
                             <p className="student-class">{student.class}</p>
-                            <button className="btn-view-route">Xem bản đồ ➜</button>
+                            <button className="btn-view-route">
+                                Xem vị trí & Lộ trình ➜
+                            </button>
                         </div>
                     </div>
                 ))}
