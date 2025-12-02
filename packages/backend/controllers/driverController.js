@@ -55,9 +55,17 @@ exports.getDriverById = async (req, res) => {
     try {
         const { id } = req.params;
 
+        // --- SỬA LỖI: Kiểm tra ID hợp lệ ---
+        if (!id || isNaN(parseInt(id))) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID tài xế không hợp lệ'
+            });
+        }
+
         const driver = await prisma.taixe.findUnique({
             where: {
-                taiXeId: parseInt(id)
+                taiXeId: parseInt(id) // Đảm bảo là Int
             },
             include: {
                 user: {
@@ -116,7 +124,6 @@ exports.createDriver = async (req, res) => {
     try {
         const { hoTen, userId, trangThai } = req.body;
 
-        // Validate
         if (!hoTen) {
             return res.status(400).json({
                 success: false,
@@ -124,7 +131,6 @@ exports.createDriver = async (req, res) => {
             });
         }
 
-        // Nếu có userId, kiểm tra user có tồn tại không
         if (userId) {
             const user = await prisma.user.findUnique({
                 where: { userId: parseInt(userId) }
@@ -137,7 +143,6 @@ exports.createDriver = async (req, res) => {
                 });
             }
 
-            // Kiểm tra user đã là tài xế chưa
             const existingDriver = await prisma.taixe.findUnique({
                 where: { userId: parseInt(userId) }
             });
@@ -213,7 +218,6 @@ exports.deleteDriver = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Kiểm tra tài xế có lịch trình không
         const driverWithSchedules = await prisma.taixe.findUnique({
             where: { taiXeId: parseInt(id) },
             include: {
@@ -257,6 +261,10 @@ exports.getDriverSchedules = async (req, res) => {
     try {
         const { id } = req.params;
 
+        if (!id || isNaN(parseInt(id))) {
+            return res.status(400).json({ message: 'ID tài xế không hợp lệ' });
+        }
+
         const schedules = await prisma.lichtrinh.findMany({
             where: {
                 taiXeId: parseInt(id)
@@ -292,8 +300,43 @@ exports.getDriverSchedules = async (req, res) => {
             message: 'Lỗi khi lấy lịch trình tài xế'
         });
     }
-};
+},
+    exports.getDriverProfile = async (req, res) => {
+        try {
+            // Lấy userId từ token (đã được middleware auth giải mã)
+            const userId = req.user.userId;
 
-process.on('beforeExit', async () => {
-    await prisma.$disconnect();
-});
+            if (!userId) {
+                return res.status(401).json({ success: false, message: 'Chưa xác thực người dùng' });
+            }
+
+            // Tìm tài xế dựa trên userId
+            const driver = await prisma.taixe.findUnique({
+                where: { userId: parseInt(userId) },
+                include: {
+                    user: {
+                        select: {
+                            userCode: true,
+                            hoTen: true,
+                            soDienThoai: true,
+                            email: true,
+                            avatar: true
+                        }
+                    },
+                    xebuyt: true // Lấy thông tin xe buýt nếu có quan hệ
+                }
+            });
+
+            if (!driver) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ tài xế' });
+            }
+
+            res.json({
+                success: true,
+                data: driver
+            });
+        } catch (error) {
+            console.error('Get driver profile error:', error);
+            res.status(500).json({ success: false, message: 'Lỗi server khi lấy hồ sơ' });
+        }
+    };

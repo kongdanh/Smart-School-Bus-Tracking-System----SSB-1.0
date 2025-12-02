@@ -1,6 +1,8 @@
 // ============================================
 // backend/controller/notificationController.js
 // ============================================
+const { PrismaClient } = require('@prisma/client'); // <-- BỔ SUNG DÒNG NÀY
+const prisma = new PrismaClient();                  // <-- BỔ SUNG DÒNG NÀY
 
 // Lấy tất cả thông báo
 exports.getAllNotifications = async (req, res) => {
@@ -69,7 +71,3 @@ exports.sendNotification = async (req, res) => {
         });
     }
 };
-
-process.on('beforeExit', async () => {
-    await prisma.$disconnect();
-});

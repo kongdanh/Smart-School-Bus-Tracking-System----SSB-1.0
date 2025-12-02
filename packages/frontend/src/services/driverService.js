@@ -22,15 +22,95 @@ axiosInstance.interceptors.request.use(
 );
 
 const driverService = {
-    // Các hàm cũ của bạn giữ nguyên...
-    getAllDrivers: async () => { /* ... */ },
-    getDriverById: async (id) => { /* ... */ },
-    createDriver: async (driverData) => { /* ... */ },
-    updateDriver: async (id, driverData) => { /* ... */ },
-    deleteDriver: async (id) => { /* ... */ },
-    getDriverSchedule: async (id) => { /* ... */ },
+    // Lấy hồ sơ của tài xế đang đăng nhập
+    getProfile: async () => {
+        try {
+            const response = await axiosInstance.get('/profile');
+            return response.data;
+        } catch (error) {
+            console.error('Error getting driver profile:', error);
+            throw error.response?.data || error;
+        }
+    },
 
-    // THÊM MỚI - CHO DASHBOARD HOẠT ĐỘNG NGAY
+    // Cập nhật hồ sơ tài xế
+    updateProfile: async (profileData) => {
+        try {
+            const response = await axiosInstance.put('/profile', profileData);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating driver profile:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Lấy tất cả tài xế
+    getAllDrivers: async () => {
+        try {
+            const response = await axiosInstance.get('/all');
+            return response.data;
+        } catch (error) {
+            console.error('Error getting all drivers:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Lấy tài xế theo ID
+    getDriverById: async (id) => {
+        try {
+            const response = await axiosInstance.get(`/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error getting driver by ID:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Tạo tài xế mới
+    createDriver: async (driverData) => {
+        try {
+            const response = await axiosInstance.post('/', driverData);
+            return response.data;
+        } catch (error) {
+            console.error('Error creating driver:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Cập nhật tài xế
+    updateDriver: async (id, driverData) => {
+        try {
+            const response = await axiosInstance.put(`/${id}`, driverData);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating driver:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Xóa tài xế
+    deleteDriver: async (id) => {
+        try {
+            const response = await axiosInstance.delete(`/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting driver:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Lấy lịch trình của tài xế
+    getDriverSchedule: async (id) => {
+        try {
+            const response = await axiosInstance.get(`/${id}/schedule`);
+            return response.data;
+        } catch (error) {
+            console.error('Error getting driver schedule:', error);
+            throw error.response?.data || error;
+        }
+    },
+
+    // Dashboard (MOCK - giữ để tương thích)
     getDashboard: async () => {
         await new Promise(resolve => setTimeout(resolve, 800));
         return {

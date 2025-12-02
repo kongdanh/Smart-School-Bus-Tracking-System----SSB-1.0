@@ -133,6 +133,19 @@ exports.markPickup = async (req, res) => {
             }
         });
 
+        // Cập nhật trạng thái trong bảng studentTrip thành "picked_up"
+        await prisma.studentTrip.update({
+            where: {
+                lichTrinhId_hocSinhId: {
+                    lichTrinhId: parseInt(lichTrinhId),
+                    hocSinhId: parseInt(hocSinhId)
+                }
+            },
+            data: {
+                trangThai: 'picked_up'
+            }
+        });
+
         res.json({ success: true, data: attendance });
 
     } catch (error) {
@@ -179,6 +192,19 @@ exports.markDropoff = async (req, res) => {
             }
         });
 
+        // Cập nhật trạng thái trong bảng studentTrip thành "completed"
+        await prisma.studentTrip.update({
+            where: {
+                lichTrinhId_hocSinhId: {
+                    lichTrinhId: parseInt(lichTrinhId),
+                    hocSinhId: parseInt(hocSinhId)
+                }
+            },
+            data: {
+                trangThai: 'completed'
+            }
+        });
+
         res.json({ success: true, data: attendance });
 
     } catch (error) {
@@ -209,6 +235,19 @@ exports.unmarkPickup = async (req, res) => {
                 thoiGianDon: null,
                 loanTra: false,
                 thoiGianTra: null
+            }
+        });
+
+        // Cập nhật trạng thái trong bảng studentTrip về "pending"
+        await prisma.studentTrip.update({
+            where: {
+                lichTrinhId_hocSinhId: {
+                    lichTrinhId: parseInt(lichTrinhId),
+                    hocSinhId: parseInt(hocSinhId)
+                }
+            },
+            data: {
+                trangThai: 'pending'
             }
         });
 
@@ -322,6 +361,23 @@ exports.markAllPickup = async (req, res) => {
                         taiXeId: taiXeId,
                         loanDon: true,
                         thoiGianDon: new Date()
+                    }
+                })
+            )
+        );
+
+        // Cập nhật trạng thái tất cả students trong studentTrip thành "picked_up"
+        await Promise.all(
+            studentTrips.map(st =>
+                prisma.studentTrip.update({
+                    where: {
+                        lichTrinhId_hocSinhId: {
+                            lichTrinhId: parseInt(lichTrinhId),
+                            hocSinhId: st.hocSinhId
+                        }
+                    },
+                    data: {
+                        trangThai: 'picked_up'
                     }
                 })
             )

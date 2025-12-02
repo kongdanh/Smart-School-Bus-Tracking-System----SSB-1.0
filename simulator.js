@@ -5,7 +5,7 @@ const axios = require('axios'); // Cần cài axios: npm install axios
 const prisma = new PrismaClient();
 
 // --- CẤU HÌNH ---
-const UPDATE_INTERVAL = 500; // Cập nhật vị trí mỗi 1 giây (tăng tốc độ gấp 3: 3000/3 = 1000)
+const UPDATE_INTERVAL = 3000; // Cập nhật vị trí mỗi 3 giây
 const BUS_ID = 1; // ID của xe bus muốn chạy
 
 async function getRealRouteFromOSRM(waypoints) {
@@ -33,18 +33,17 @@ async function getRealRouteFromOSRM(waypoints) {
 }
 
 async function runBus() {
-    console.log(`🚀 KHỞI ĐỘNG XE BUS ${BUS_ID} (CHẾ ĐỘ REAL-ROAD - TỐCĐỘ GẤP 3)...`);
+    console.log(`🚀 KHỞI ĐỘNG XE BUS ${BUS_ID} (CHẾ ĐỘ REAL-ROAD)...`);
 
-    // 1. Các trạm dừng chính - KHỚP VỚI FRONTEND (5 trạm)
+    // 1. Các trạm dừng chính (Input)
     const majorStops = [
-        { lat: 10.7716, lng: 106.6995, name: "Trường ABC" },
-        { lat: 10.7997, lng: 106.7188, name: "Ngã tư Hàng Xanh" },
-        { lat: 10.7876, lng: 106.7032, name: "Thảo Cầm Viên" },
-        { lat: 10.7972, lng: 106.7570, name: "Metro An Phú" },
-        { lat: 10.8490, lng: 106.7628, name: "Ngã tư Thủ Đức" }
+        { lat: 10.7716, lng: 106.6995 }, // Trường ABC
+        { lat: 10.7876, lng: 106.7032 }, // Thảo Cầm Viên
+        { lat: 10.7932, lng: 106.6995 }, // Chợ Tân Định
+        { lat: 10.7997, lng: 106.7188 }, // Hàng Xanh
+        { lat: 10.7972, lng: 106.7570 }, // Metro An Phú
+        { lat: 10.8490, lng: 106.7628 }  // Thủ Đức
     ];
-
-    console.log(`📍 Các trạm dừng: ${majorStops.map(s => s.name).join(' → ')}`);
 
     // 2. Lấy đường đi thực tế (Uốn lượn)
     let realPath = await getRealRouteFromOSRM(majorStops);
@@ -90,7 +89,7 @@ async function runBus() {
 
             // Log tiến độ
             const percent = Math.round((currentIndex / realPath.length) * 100);
-            console.log(`🚌 Bus ${BUS_ID} di chuyển: [${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}] (${percent}%) - Speed x3`);
+            console.log(`🚌 Bus ${BUS_ID} di chuyển: [${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}] (${percent}%)`);
 
             // Tăng giảm index để xe chạy đi chạy lại
             currentIndex += direction;
