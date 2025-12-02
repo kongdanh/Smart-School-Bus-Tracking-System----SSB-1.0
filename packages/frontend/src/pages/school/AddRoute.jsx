@@ -25,7 +25,8 @@ const AddRoute = () => {
         tenDiemDung: '',
         diaChi: '',
         vido: '',
-        kinhdo: ''
+        kinhdo: '',
+        selectedStudentId: '' // ID học sinh để tự động điền địa chỉ
     });
 
     useEffect(() => {
@@ -58,8 +59,18 @@ const AddRoute = () => {
             return;
         }
 
+        // Check for duplicate addresses
+        const isDuplicate = formData.stops.some(s => s.diaChi.toLowerCase() === newStop.diaChi.toLowerCase());
+        if (isDuplicate) {
+            toast.warning('Địa chỉ này đã tồn tại trong danh sách điểm dừng');
+            return;
+        }
+
         const stop = {
-            ...newStop,
+            tenDiemDung: newStop.tenDiemDung,
+            diaChi: newStop.diaChi,
+            vido: newStop.vido,
+            kinhdo: newStop.kinhdo,
             id: Date.now(),
             thuTu: formData.stops.length + 1
         };
@@ -73,10 +84,34 @@ const AddRoute = () => {
             tenDiemDung: '',
             diaChi: '',
             vido: '',
-            kinhdo: ''
+            kinhdo: '',
+            selectedStudentId: ''
         });
 
         toast.success('Đã thêm điểm dừng');
+    };
+
+    // Handle student selection for auto-filling stop address
+    const handleStudentSelect = (studentId) => {
+        if (!studentId) {
+            setNewStop(prev => ({
+                ...prev,
+                selectedStudentId: '',
+                tenDiemDung: '',
+                diaChi: ''
+            }));
+            return;
+        }
+
+        const student = students.find(s => s.id === parseInt(studentId));
+        if (student) {
+            setNewStop(prev => ({
+                ...prev,
+                selectedStudentId: studentId,
+                tenDiemDung: student.hoTen || '',
+                diaChi: student.diemDon || '' // Use pickup point from student
+            }));
+        }
     };
 
     const handleRemoveStop = (id) => {
@@ -247,6 +282,21 @@ const AddRoute = () => {
                             <h2>Thêm Điểm Dừng</h2>
                             <div className="stop-input-group">
                                 <div className="form-grid">
+                                    <div className="form-group full-width">
+                                        <label>Chọn Học Sinh (Để Tự Động Điền Địa Chỉ)</label>
+                                        <select
+                                            value={newStop.selectedStudentId}
+                                            onChange={e => handleStudentSelect(e.target.value)}
+                                            className="student-select"
+                                        >
+                                            <option value="">-- Hoặc nhập thủ công --</option>
+                                            {students.map(student => (
+                                                <option key={student.id} value={student.id}>
+                                                    {student.hoTen} ({student.lop}) - {student.diemDon}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <div className="form-group full-width">
                                         <label>Tên Điểm Dừng *</label>
                                         <input

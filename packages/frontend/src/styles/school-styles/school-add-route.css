@@ -524,6 +524,27 @@
     cursor: not-allowed;
 }
 
+/* Student Select Dropdown */
+.student-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23667eea' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.5rem;
+    background-color: white;
+}
+
+.student-select option {
+    padding: 0.5rem;
+    color: #333;
+    background: white;
+}
+
+.student-select option:hover {
+    background: #667eea;
+    color: white;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .add-route-container {
