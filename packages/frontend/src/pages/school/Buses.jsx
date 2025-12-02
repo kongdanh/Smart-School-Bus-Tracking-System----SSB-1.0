@@ -11,6 +11,8 @@ const Buses = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [buses, setBuses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBusRoutes, setSelectedBusRoutes] = useState(null);
+  const [busRoutes, setBusRoutes] = useState([]);
 
   // Load dữ liệu từ API
   useEffect(() => {
@@ -32,6 +34,29 @@ const Buses = () => {
       toast.error("Lỗi khi tải danh sách xe");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTrackBus = async (bus) => {
+    try {
+      // Fetch schedules/routes for this bus
+      const schedulesRes = await schoolService.getAllSchedules?.() || { success: false, data: [] };
+      const allSchedules = schedulesRes.data || [];
+      
+      // Filter schedules for this bus
+      const busSchedules = allSchedules.filter(s => s.xeBuytId === bus.id || s.bienSoXe === bus.bienSo);
+      
+      if (busSchedules.length === 0) {
+        toast.info(`Xe ${bus.bienSo} không có lịch trình nào`);
+      } else {
+        toast.info(`Xe ${bus.bienSo} có ${busSchedules.length} lịch trình`);
+      }
+      
+      setSelectedBusRoutes(bus.id);
+      setBusRoutes(busSchedules);
+    } catch (error) {
+      console.error('Error fetching bus routes:', error);
+      toast.error('Lỗi khi tải lịch trình');
     }
   };
 
@@ -260,7 +285,7 @@ const Buses = () => {
               </div>
 
               <div className="bus-actions">
-                <button className="btn-primary">
+                <button className="btn-primary" onClick={() => handleTrackBus(bus)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                     <circle cx="12" cy="10" r="3" />

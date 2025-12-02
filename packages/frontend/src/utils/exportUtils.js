@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import schoolService from '../services/schoolService';
 
 /**
  * Export dữ liệu ra file Excel
@@ -38,18 +39,42 @@ export const exportToExcel = (data, fileName, sheetName = 'Data') => {
 /**
  * Export học sinh
  */
-export const exportStudents = (students) => {
-    const data = students.map((student, index) => ({
-        'STT': index + 1,
-        'Mã HS': student.maHS || '',
-        'Tên Học Sinh': student.hoTen || '',
-        'Lớp': student.lop || '',
-        'Phụ Huynh': student.phuHuynh || '',
-        'Số Điện Thoại': student.soDienThoaiPH || '',
-        'Điểm Đón': student.diemDon || '',
-        'Điểm Trả': student.diemTra || ''
-    }));
-    exportToExcel(data, 'DanhSachHocSinh', 'Học Sinh');
+export const exportStudents = async (students) => {
+    try {
+        // Fetch all parents
+        const parentsRes = await schoolService.getAllParents?.();
+        const parents = parentsRes?.data || [];
+        const parentMap = {};
+        parents.forEach(p => {
+            parentMap[p.id] = p.hoTen || p.tenPhuHuynh || '';
+        });
+
+        const data = students.map((student, index) => ({
+            'STT': index + 1,
+            'Mã HS': student.maHS || '',
+            'Tên Học Sinh': student.hoTen || '',
+            'Lớp': student.lop || '',
+            'Phụ Huynh': parentMap[student.phuHuynh] || student.phuHuynh || '',
+            'Số Điện Thoại': student.soDienThoaiPH || '',
+            'Điểm Đón': student.diemDon || '',
+            'Điểm Trả': student.diemTra || ''
+        }));
+        exportToExcel(data, 'DanhSachHocSinh', 'Học Sinh');
+    } catch (error) {
+        console.error('Error exporting students:', error);
+        // Fallback if parent API not available
+        const data = students.map((student, index) => ({
+            'STT': index + 1,
+            'Mã HS': student.maHS || '',
+            'Tên Học Sinh': student.hoTen || '',
+            'Lớp': student.lop || '',
+            'Phụ Huynh': student.phuHuynh || '',
+            'Số Điện Thoại': student.soDienThoaiPH || '',
+            'Điểm Đón': student.diemDon || '',
+            'Điểm Trả': student.diemTra || ''
+        }));
+        exportToExcel(data, 'DanhSachHocSinh', 'Học Sinh');
+    }
 };
 
 /**

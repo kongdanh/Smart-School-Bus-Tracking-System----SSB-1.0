@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
+import schoolService from "../../services/schoolService";
+import { toast } from "react-toastify";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "../../styles/school-styles/school-routes.css";
@@ -16,124 +18,55 @@ L.Icon.Default.mergeOptions({
 export default function SchoolRoutes() {
   const navigate = useNavigate();
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [routes, setRoutes] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-
-  const createIcon = (color, number) => {
-    return L.divIcon({
-      html: `<div style="background-color: ${color}; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 14px;">${number}</div>`,
-      className: 'custom-div-icon',
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-  };
+  const [showRoutesModal, setShowRoutesModal] = useState(false);
 
   useEffect(() => {
-    const fetchRoutesData = async () => {
-      try {
-        setLoading(true);
-
-        const routeConfigs = [
-          {
-            id: "A1",
-            name: "Route A1",
-            description: "East District - City Center",
-            color: "#10b981",
-            coordinates: [
-              [10.762622, 106.660172],
-              [10.7685, 106.6825],
-              [10.776889, 106.700806]
-            ]
-          },
-          {
-            id: "B2",
-            name: "Route B2",
-            description: "West District - City Center",
-            color: "#f59e0b",
-            coordinates: [
-              [10.762622, 106.660172],
-              [10.7565, 106.6705],
-              [10.7685, 106.6825],
-              [10.776889, 106.700806]
-            ]
-          },
-          {
-            id: "C3",
-            name: "Route C3",
-            description: "South District - City Center",
-            color: "#3b82f6",
-            coordinates: [
-              [10.762622, 106.660172],
-              [10.7585, 106.6705],
-              [10.7645, 106.6805],
-              [10.7705, 106.6905],
-              [10.776889, 106.700806]
-            ]
-          }
-        ];
-
-        const routePromises = routeConfigs.map(async (config) => {
-          try {
-            const coordString = config.coordinates
-              .map(coord => `${coord[1]},${coord[0]}`)
-              .join(';');
-
-            const res = await fetch(
-              `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`
-            );
-
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-
-            const data = await res.json();
-
-            if (data.routes && data.routes.length > 0) {
-              const route = data.routes[0];
-              const routeCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-
-              return {
-                ...config,
-                stops: config.coordinates.length,
-                status: Math.random() > 0.3 ? "active" : "stopped",
-                statusText: Math.random() > 0.3 ? "Active" : "Stopped",
-                routeCoordinates: routeCoords,
-                distance: Math.round(route.distance / 1000),
-                duration: Math.round(route.duration / 60),
-                stopCoordinates: config.coordinates,
-                students: Math.floor(Math.random() * 35 + 15),
-                buses: Math.floor(Math.random() * 2 + 1)
-              };
-            }
-          } catch (err) {
-            console.error(`Error loading route ${config.name}:`, err);
-            return {
-              ...config,
-              stops: config.coordinates.length,
-              status: "error",
-              statusText: "Error",
-              routeCoordinates: config.coordinates,
-              stopCoordinates: config.coordinates,
-              distance: 0,
-              duration: 0,
-              students: 0,
-              buses: 0
-            };
-          }
-        });
-
-        const fetchedRoutes = await Promise.all(routePromises);
-        setRoutes(fetchedRoutes);
-      } catch (err) {
-        console.error("Error loading routes:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRoutesData();
+    fetchSchedules();
   }, []);
 
-  const filteredRoutes = routes.filter(route =>
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true);
+      const response = await schoolService.getAllSchedules?.();
+      
+      if (response?.success) {
+        const schedulesList = response.data || [];
+        
+        // Map schedules to route format
+        const routes = schedulesList.map((schedule, idx) => ({
+          id: schedule.lichTrinhId || schedule.id || `schedule-${idx}`,
+          name: schedule.tenTuyen || `Lịch trình ${idx + 1}`,
+          description: `Tuyến: ${schedule.tenTuyen || 'N/A'}`,
+          color: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6'][idx % 5],
+          stops: schedule.stops?.length || 0,
+          status: 'stopped',
+          statusText: 'Stopped',
+          students: schedule.students?.length || 0,
+          buses: 1,
+          distance: 0,
+          duration: 0,
+          routeCoordinates: [],
+          stopCoordinates: [],
+          scheduleData: schedule
+        }));
+        
+        setSchedules(routes);
+      } else {
+        toast.warning("Không thể tải lịch trình");
+        setSchedules([]);
+      }
+    } catch (error) {
+      console.error('Error fetching schedules:', error);
+      setSchedules([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredRoutes = schedules.filter(route =>
     route.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     route.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -194,7 +127,7 @@ export default function SchoolRoutes() {
               <div
                 key={route.id}
                 className={`route-item ${route.status} ${selectedRoute?.id === route.id ? 'selected' : ''}`}
-                onClick={() => setSelectedRoute(route)}
+                onClick={() => handleViewSchedule(route)}
               >
                 <div className="route-item-header">
                   <div className="route-color" style={{ backgroundColor: route.color }}></div>
@@ -233,6 +166,14 @@ export default function SchoolRoutes() {
                     </span>
                   </div>
                 )}
+                {!route.distance && (
+                  <div className="route-details">
+                    <span className={`status-badge ${route.status}`}>
+                      <span className="status-dot"></span>
+                      {route.statusText}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -262,7 +203,7 @@ export default function SchoolRoutes() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
 
-              {routes.map((route) => (
+              {schedules.map((route) => (
                 <React.Fragment key={route.id}>
                   {route.routeCoordinates && route.routeCoordinates.length > 0 && (
                     <Polyline
@@ -301,6 +242,44 @@ export default function SchoolRoutes() {
           </div>
         </div>
       </div>
+
+      {/* Schedule Details Modal */}
+      {showRoutesModal && selectedRoute && (
+        <div className="modal-overlay" onClick={() => setShowRoutesModal(false)}>
+          <div className="modal-content modal-large" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{selectedRoute.name}</h2>
+              <button className="modal-close" onClick={() => setShowRoutesModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="schedule-details">
+                <div className="detail-section">
+                  <h3>Thông Tin Tuyến</h3>
+                  <p><strong>Mã:</strong> {selectedRoute.id}</p>
+                  <p><strong>Trạng thái:</strong> <span className={`status-badge ${selectedRoute.status}`}>{selectedRoute.statusText}</span></p>
+                  <p><strong>Số điểm dừng:</strong> {selectedRoute.stops}</p>
+                  <p><strong>Số học sinh:</strong> {selectedRoute.students}</p>
+                  <p><strong>Số xe:</strong> {selectedRoute.buses}</p>
+                </div>
+                
+                {selectedRoute.scheduleData?.stops && (
+                  <div className="detail-section">
+                    <h3>Các Điểm Dừng</h3>
+                    <ul className="stops-list">
+                      {selectedRoute.scheduleData.stops.map((stop, idx) => (
+                        <li key={idx}>
+                          <strong>{idx + 1}. {stop.tenDiemDung || `Điểm dừng ${idx + 1}`}</strong>
+                          <p>{stop.diaChi}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

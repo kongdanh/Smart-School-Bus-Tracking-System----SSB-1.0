@@ -170,7 +170,7 @@
 }
 
 .btn-add-stop {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #0f3460;
     color: white;
     border: none;
     padding: 0.8rem 1.5rem;
@@ -184,7 +184,7 @@
 
 .btn-add-stop:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 20px rgba(15, 52, 96, 0.4);
 }
 
 /* Stops List */
@@ -507,7 +507,7 @@
 
 .btn-next,
 .btn-submit {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #0f3460;
     color: white;
     min-width: 150px;
 }
@@ -515,7 +515,7 @@
 .btn-next:hover:not(:disabled),
 .btn-submit:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 20px rgba(15, 52, 96, 0.4);
 }
 
 .btn-next:disabled,

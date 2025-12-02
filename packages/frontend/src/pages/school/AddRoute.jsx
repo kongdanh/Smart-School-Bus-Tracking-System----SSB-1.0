@@ -24,9 +24,7 @@ const AddRoute = () => {
     const [newStop, setNewStop] = useState({
         tenDiemDung: '',
         diaChi: '',
-        vido: '',
-        kinhdo: '',
-        selectedStudentId: '' // ID học sinh để tự động điền địa chỉ
+        selectedStudentId: ''
     });
 
     useEffect(() => {
@@ -83,8 +81,6 @@ const AddRoute = () => {
         setNewStop({
             tenDiemDung: '',
             diaChi: '',
-            vido: '',
-            kinhdo: '',
             selectedStudentId: ''
         });
 
@@ -103,14 +99,16 @@ const AddRoute = () => {
             return;
         }
 
-        const student = students.find(s => s.id === parseInt(studentId));
+        const student = students.find(s => s.id === parseInt(studentId) || s.maHS === studentId);
         if (student) {
             setNewStop(prev => ({
                 ...prev,
                 selectedStudentId: studentId,
                 tenDiemDung: student.hoTen || '',
-                diaChi: student.diemDon || '' // Use pickup point from student
+                diaChi: student.diemDon || ''
             }));
+        } else {
+            toast.warning('Không tìm thấy học sinh này');
         }
     };
 
@@ -189,11 +187,18 @@ const AddRoute = () => {
                 });
             }
 
+            // Fix timezone: adjust startTime by adding UTC+7 offset
+            const [hours, minutes] = formData.startTime.split(':');
+            const adjustedDate = new Date();
+            adjustedDate.setHours(parseInt(hours), parseInt(minutes), 0);
+            adjustedDate.setHours(adjustedDate.getHours() + 7);
+            const adjustedTime = adjustedDate.toTimeString().slice(0, 5);
+
             // Create schedule
             const scheduleRes = await schoolService.createSchedule({
                 maLich: `LCH-${formData.maTuyen}-${Date.now()}`,
                 ngay: new Date().toISOString().split('T')[0],
-                gioKhoiHanh: formData.startTime,
+                gioKhoiHanh: adjustedTime,
                 tuyenDuongId: routeId,
                 xeBuytId: parseInt(formData.selectedBusId),
                 taiXeId: parseInt(formData.selectedDriverId)
@@ -313,26 +318,6 @@ const AddRoute = () => {
                                             placeholder="VD: 123 Lê Lợi, Quận 1, TP.HCM"
                                             value={newStop.diaChi}
                                             onChange={e => setNewStop(prev => ({ ...prev, diaChi: e.target.value }))}
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Vĩ Độ (Latitude)</label>
-                                        <input
-                                            type="number"
-                                            step="0.0001"
-                                            placeholder="10.7769"
-                                            value={newStop.vido}
-                                            onChange={e => setNewStop(prev => ({ ...prev, vido: e.target.value }))}
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Kinh Độ (Longitude)</label>
-                                        <input
-                                            type="number"
-                                            step="0.0001"
-                                            placeholder="106.7009"
-                                            value={newStop.kinhdo}
-                                            onChange={e => setNewStop(prev => ({ ...prev, kinhdo: e.target.value }))}
                                         />
                                     </div>
                                 </div>
