@@ -35,6 +35,12 @@ import SchoolNotifications from "./pages/school/Notifications";
 import SchoolCreateSchedule from "./pages/school/CreateSchedule";
 import SchoolAddRoute from "./pages/school/AddRoute";
 import SchoolDriverDetail from "./pages/school/DriverDetail";
+import AddStudent from "./pages/school/AddStudent";
+import EditStudent from "./pages/school/EditStudent";
+import AddBus from "./pages/school/AddBus";
+import EditBus from "./pages/school/EditBus";
+import AddDriver from "./pages/school/AddDriver";
+import EditDriver from "./pages/school/EditDriver";
 
 // protected route component
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -219,9 +225,15 @@ function App() {
           >
             <Route path="dashboard" element={<SchoolDashboard />} />
             <Route path="students" element={<SchoolStudents />} />
+            <Route path="students/add" element={<AddStudent />} />
+            <Route path="students/:id/edit" element={<EditStudent />} />
             <Route path="drivers" element={<SchoolDrivers />} />
+            <Route path="drivers/add" element={<AddDriver />} />
+            <Route path="drivers/:id/edit" element={<EditDriver />} />
             <Route path="drivers/:id" element={<SchoolDriverDetail />} />
             <Route path="buses" element={<SchoolBuses />} />
+            <Route path="buses/add" element={<AddBus />} />
+            <Route path="buses/:id/edit" element={<EditBus />} />
             <Route path="routes" element={<SchoolRoutes />} />
             <Route path="add-route" element={<SchoolAddRoute />} />
             <Route path="tracking" element={<SchoolTracking />} />

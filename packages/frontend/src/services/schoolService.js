@@ -163,6 +163,16 @@ const schoolService = {
     return handleApiCall(() => axiosInstance.delete(`/students/${id}`));
   },
 
+  getStudents: async () => {
+    return handleApiCall(
+      () => axiosInstance.get("/students"),
+      {
+        success: true,
+        data: []
+      }
+    );
+  },
+
   // ==================== TÀI XẾ ====================
   getAllDrivers: async () => {
     return handleApiCall(
@@ -192,6 +202,16 @@ const schoolService = {
 
   getDriverById: async (id) => {
     return handleApiCall(() => axiosInstance.get(`/drivers/${id}`));
+  },
+
+  getDrivers: async () => {
+    return handleApiCall(
+      () => axiosInstance.get("/drivers"),
+      {
+        success: true,
+        data: []
+      }
+    );
   },
 
   // ==================== XE BUÝT ====================
@@ -235,6 +255,16 @@ const schoolService = {
 
   deleteBus: async (id) => {
     return handleApiCall(() => axiosInstance.delete(`/buses/${id}`));
+  },
+
+  getBuses: async () => {
+    return handleApiCall(
+      () => axiosInstance.get("/buses"),
+      {
+        success: true,
+        data: []
+      }
+    );
   },
 
   // ==================== TUYẾN ĐƯỜNG ====================

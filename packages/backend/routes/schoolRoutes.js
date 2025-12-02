@@ -30,9 +30,15 @@ router.delete('/buses/:id', schoolController.deleteBus);
 
 // ==================== TUYẾN ĐƯỜNG ====================
 router.get('/routes', schoolController.getAllRoutes);
+router.post('/routes', schoolController.createRoute);
+router.get('/routes/:id', schoolController.getRouteById);
+router.post('/routes/:routeId/stops', schoolController.addStopToRoute);
+router.get('/routes/:routeId/stops', schoolController.getRouteStops);
 
 // ==================== LỊCH TRÌNH ====================
 router.get('/schedules', schoolController.getAllSchedules);
+router.post('/schedules', schoolController.createSchedule);
+router.post('/schedules/:scheduleId/students/:studentId', schoolController.assignStudentToSchedule);
 
 // ==================== TRACKING ====================
 router.get('/tracking', schoolController.getAllBusLocations);

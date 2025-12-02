@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import schoolService from '../../services/schoolService';
+import { exportStudents } from '../../utils/exportUtils';
 import { toast } from 'react-toastify';
 import '../../styles/school-styles/school-students.css';
 
 const Students = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,12 +38,9 @@ const Students = () => {
   const classes = ['all', '3A', '4B', '5A'];
   const filteredStudents = students.filter(s => {
     const search = searchTerm.toLowerCase();
-    return (s.hoTen.toLowerCase().includes(search) || s.maHS.toLowerCase().includes(search)) &&
-      (filterClass === 'all' || s.lop === filterClass) &&
-      (filterStatus === 'all' || s.status === filterStatus);
+    return (s.hoTen?.toLowerCase().includes(search) || s.maHS?.toLowerCase().includes(search)) &&
+      (filterClass === 'all' || s.lop === filterClass);
   });
-
-  const activeCount = students.filter(s => s.status === 'active').length;
 
   return (
     <>
@@ -53,7 +52,7 @@ const Students = () => {
             <h1>Students Management</h1>
             <p className="header-subtitle">Manage and monitor all students in the system</p>
           </div>
-          <button className="btn-add-student">
+          <button className="btn-add-student" onClick={() => navigate('/school/students/add')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
@@ -73,28 +72,6 @@ const Students = () => {
             <div className="stat-content">
               <div className="stat-value">{students.length}</div>
               <div className="stat-label">Total Students</div>
-            </div>
-          </div>
-          <div className="stat-box active">
-            <div className="stat-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{activeCount}</div>
-              <div className="stat-label">Active</div>
-            </div>
-          </div>
-          <div className="stat-box inactive">
-            <div className="stat-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
-              </svg>
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{students.length - activeCount}</div>
-              <div className="stat-label">Inactive</div>
             </div>
           </div>
           <div className="stat-box classes">
@@ -125,19 +102,13 @@ const Students = () => {
               {classes.filter(c => c !== 'all').map(cls => <option key={cls} value={cls}>Class {cls}</option>)}
             </select>
 
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="filter-select">
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-
-            <button className="btn-export-old">
+            <button className="btn-export-old" onClick={() => exportStudents(filteredStudents)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Export
+              Export Excel
             </button>
           </div>
         </div>
@@ -152,7 +123,6 @@ const Students = () => {
                 <th>Class</th>
                 <th>Route</th>
                 <th>Contact</th>
-                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -179,7 +149,6 @@ const Students = () => {
                       <span>{student.soDienThoaiPH}</span>
                     </div>
                   </td>
-                  <td><span className={`status-badge ${student?.status || 'unknown'}`}>{student?.status?.toUpperCase() || 'UNKNOWN'}</span></td>
                   <td>
                     <div className="action-buttons">
                       <button className="btn-action view" onClick={() => setSelectedStudent(student)} title="View Details">
@@ -187,7 +156,7 @@ const Students = () => {
                           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
                         </svg>
                       </button>
-                      <button className="btn-action edit" title="Edit">
+                      <button className="btn-action edit" onClick={() => navigate(`/school/students/${student.id}/edit`)} title="Edit">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -224,7 +193,6 @@ const Students = () => {
                   <div><strong>Parent:</strong> {selectedStudent.phuHuynh}</div>
                   <div><strong>Contact:</strong> {selectedStudent.soDienThoaiPH}</div>
                   <div><strong>Route:</strong> <span className="route-badge">{selectedStudent.route}</span></div>
-                  <div><strong>Status:</strong> <span className={`status-badge ${selectedStudent?.status || 'unknown'}`}>{selectedStudent?.status?.toUpperCase() || 'UNKNOWN'}</span></div>
                   <div className="full-width">
                     <strong>Pickup Point:</strong><br />
                     <span className="location-detail">{selectedStudent.diemDon}</span>

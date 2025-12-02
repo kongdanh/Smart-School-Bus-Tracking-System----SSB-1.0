@@ -699,6 +699,322 @@ exports.getAllBusLocations = async (req, res) => {
   }
 };
 
+// ==================== ROUTES ====================
+exports.getAllRoutes = async (req, res) => {
+  try {
+    const routes = await prisma.tuyenduong.findMany({
+      include: {
+        tuyenduong_diemdung: {
+          include: {
+            diemdung: true
+          },
+          orderBy: {
+            thuTu: 'asc'
+          }
+        },
+        lichtrinh: {
+          take: 5,
+          orderBy: {
+            ngay: 'desc'
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: routes
+    });
+  } catch (error) {
+    console.error('Get all routes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy danh sách tuyến'
+    });
+  }
+};
+
+exports.getRouteById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const route = await prisma.tuyenduong.findUnique({
+      where: {
+        tuyenDuongId: parseInt(id)
+      },
+      include: {
+        tuyenduong_diemdung: {
+          include: {
+            diemdung: true
+          },
+          orderBy: {
+            thuTu: 'asc'
+          }
+        }
+      }
+    });
+
+    if (!route) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tuyến đường'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: route
+    });
+  } catch (error) {
+    console.error('Get route by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy thông tin tuyến'
+    });
+  }
+};
+
+exports.createRoute = async (req, res) => {
+  try {
+    const { maTuyen, tenTuyen } = req.body;
+
+    if (!maTuyen || !tenTuyen) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã tuyến và tên tuyến là bắt buộc'
+      });
+    }
+
+    const existingRoute = await prisma.tuyenduong.findUnique({
+      where: { maTuyen }
+    });
+
+    if (existingRoute) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã tuyến đã tồn tại'
+      });
+    }
+
+    const route = await prisma.tuyenduong.create({
+      data: {
+        maTuyen,
+        tenTuyen,
+        trangThai: 'active'
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Tạo tuyến thành công',
+      data: route
+    });
+  } catch (error) {
+    console.error('Create route error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi tạo tuyến'
+    });
+  }
+};
+
+exports.getRouteStops = async (req, res) => {
+  try {
+    const { routeId } = req.params;
+    const stops = await prisma.tuyenduong_diemdung.findMany({
+      where: {
+        tuyenDuongId: parseInt(routeId)
+      },
+      include: {
+        diemdung: true
+      },
+      orderBy: {
+        thuTu: 'asc'
+      }
+    });
+
+    res.json({
+      success: true,
+      data: stops
+    });
+  } catch (error) {
+    console.error('Get route stops error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy điểm dừng'
+    });
+  }
+};
+
+exports.addStopToRoute = async (req, res) => {
+  try {
+    const { routeId } = req.params;
+    const { diemDungId, tenDiemDung, diaChi, vido, kinhdo, thuTu } = req.body;
+
+    let stopId = diemDungId;
+
+    // Nếu không có diemDungId, tạo điểm dừng mới
+    if (!diemDungId && tenDiemDung) {
+      const newStop = await prisma.diemdung.create({
+        data: {
+          tenDiemDung,
+          diaChi: diaChi || null,
+          vido: vido ? parseFloat(vido) : null,
+          kinhdo: kinhdo ? parseFloat(kinhdo) : null
+        }
+      });
+      stopId = newStop.diemDungId;
+    }
+
+    if (!stopId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cần cung cấp diemDungId hoặc thông tin điểm dừng mới'
+      });
+    }
+
+    const routeStop = await prisma.tuyenduong_diemdung.create({
+      data: {
+        tuyenDuongId: parseInt(routeId),
+        diemDungId: parseInt(stopId),
+        thuTu: parseInt(thuTu) || 1
+      },
+      include: {
+        diemdung: true
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Thêm điểm dừng thành công',
+      data: routeStop
+    });
+  } catch (error) {
+    console.error('Add stop to route error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi thêm điểm dừng'
+    });
+  }
+};
+
+// ==================== SCHEDULES ====================
+exports.getAllSchedules = async (req, res) => {
+  try {
+    const schedules = await prisma.lichtrinh.findMany({
+      include: {
+        tuyenduong: true,
+        taixe: {
+          include: {
+            user: true
+          }
+        },
+        xebuyt: true
+      },
+      orderBy: [
+        { ngay: 'desc' },
+        { gioKhoiHanh: 'asc' }
+      ]
+    });
+
+    res.json({
+      success: true,
+      data: schedules
+    });
+  } catch (error) {
+    console.error('Get all schedules error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy lịch trình'
+    });
+  }
+};
+
+exports.createSchedule = async (req, res) => {
+  try {
+    const { maLich, ngay, gioKhoiHanh, gioKetThuc, tuyenDuongId, taiXeId, xeBuytId } = req.body;
+
+    if (!maLich || !ngay) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã lịch và ngày là bắt buộc'
+      });
+    }
+
+    const existingSchedule = await prisma.lichtrinh.findUnique({
+      where: { maLich }
+    });
+
+    if (existingSchedule) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã lịch đã tồn tại'
+      });
+    }
+
+    const schedule = await prisma.lichtrinh.create({
+      data: {
+        maLich,
+        ngay: new Date(ngay),
+        gioKhoiHanh: gioKhoiHanh ? new Date(`1970-01-01T${gioKhoiHanh}`) : null,
+        gioKetThuc: gioKetThuc ? new Date(`1970-01-01T${gioKetThuc}`) : null,
+        tuyenDuongId: tuyenDuongId ? parseInt(tuyenDuongId) : null,
+        taiXeId: taiXeId ? parseInt(taiXeId) : null,
+        xeBuytId: xeBuytId ? parseInt(xeBuytId) : null,
+        trangThai: 'scheduled'
+      },
+      include: {
+        tuyenduong: true,
+        taixe: {
+          include: {
+            user: true
+          }
+        },
+        xebuyt: true
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Tạo lịch trình thành công',
+      data: schedule
+    });
+  } catch (error) {
+    console.error('Create schedule error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi tạo lịch trình'
+    });
+  }
+};
+
+exports.assignStudentToSchedule = async (req, res) => {
+  try {
+    const { scheduleId, studentId } = req.params;
+
+    const attendance = await prisma.attendance.create({
+      data: {
+        lichTrinhId: parseInt(scheduleId),
+        hocSinhId: parseInt(studentId),
+        taiXeId: 1, // Default value, should be from schedule
+        loanDon: false,
+        loanTra: false
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Thêm học sinh vào lịch trình thành công',
+      data: attendance
+    });
+  } catch (error) {
+    console.error('Assign student to schedule error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi thêm học sinh'
+    });
+  }
+};
+
 process.on('beforeExit', async () => {
   await prisma.$disconnect();
 });
