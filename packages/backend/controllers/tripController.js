@@ -191,7 +191,7 @@ exports.getDriverDashboard = async (req, res) => {
                 tripRecords: {
                     where: { taiXeId: taiXeId }
                 },
-                studenttrip: {
+                studentTrips: {
                     include: {
                         hocsinh: {
                             select: {

@@ -191,8 +191,8 @@ export default function RoutesPage() {
 
         const loadStudents = async () => {
             try {
-                // Lấy danh sách học sinh từ currentTrip.studenttrip
-                const allStudents = currentTrip.studenttrip?.map(st => ({
+                // Lấy danh sách học sinh từ currentTrip.studentTrips
+                const allStudents = currentTrip.studentTrips?.map(st => ({
                     hocSinhId: st.hocsinh.hocSinhId,
                     hoTen: st.hocsinh.hoTen,
                     maHS: st.hocsinh.maHS,

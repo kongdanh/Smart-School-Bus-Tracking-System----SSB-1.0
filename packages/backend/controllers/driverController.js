@@ -322,8 +322,7 @@ exports.getDriverSchedules = async (req, res) => {
                             email: true,
                             avatar: true
                         }
-                    },
-                    xebuyt: true // Lấy thông tin xe buýt nếu có quan hệ
+                    }
                 }
             });
 
@@ -387,7 +386,7 @@ exports.getTodaySchedule = async (req, res) => {
                         }
                     }
                 },
-                studenttrip: {
+                studentTrips: {
                     include: {
                         hocsinh: {
                             select: {
