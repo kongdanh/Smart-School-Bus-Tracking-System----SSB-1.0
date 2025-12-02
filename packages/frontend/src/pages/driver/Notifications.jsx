@@ -1,10 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import notificationService from '../../services/notificationService';
+import { toast } from 'react-toastify';
 import '../../styles/driver-styles/driver-notifications.css';
 
 const Notifications = () => {
+    const [notifications, setNotifications] = useState([]);
     const [filter, setFilter] = useState('all');
+    const [loading, setLoading] = useState(true);
 
-    const notifications = [
+    // Load notifications from backend
+    useEffect(() => {
+        fetchNotifications();
+
+        // Poll mỗi 5 giây để cập nhật thông báo mới
+        const pollInterval = setInterval(fetchNotifications, 5000);
+
+        return () => clearInterval(pollInterval);
+    }, []);
+
+    const fetchNotifications = async () => {
+        try {
+            setLoading(true);
+            const res = await notificationService.getAllNotifications();
+
+            if (res.success) {
+                setNotifications(res.data || []);
+            } else {
+                // Nếu backend chưa có endpoint này, fallback to mock
+                console.warn('Using mock notifications - backend endpoint not ready');
+                setNotifications(getMockNotifications());
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            // Fallback to mock data nếu API không hoạt động
+            setNotifications(getMockNotifications());
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Mock data - fallback nếu API chưa có
+    const getMockNotifications = () => [
         { id: 1, type: 'warning', title: 'Xe trễ 10 phút', message: 'Chuyến 7:30 sáng bị trễ do kẹt xe 5 phút trước', time: '5 phút trước', unread: true, icon: '⚠️' },
         { id: 2, type: 'info', title: 'Học sinh vắng', message: 'Em Nguyễn Thị B vắng có phép 15 phút trước', time: '15 phút trước', unread: true, icon: '👤' },
         { id: 3, type: 'success', title: 'Check-in thành công', message: 'Bạn đã điểm danh lúc 6:45 AM 1 giờ trước', time: '1 giờ trước', unread: false, icon: '✅' },
@@ -13,6 +49,28 @@ const Notifications = () => {
         { id: 6, type: 'success', title: 'Hoàn thành chuyến', message: 'Chuyến buổi sáng đã hoàn thành xuất sắc', time: '4 giờ trước', unread: false, icon: '🎉' },
     ];
 
+    const handleMarkAsRead = async (notificationId) => {
+        try {
+            await notificationService.markAsRead(notificationId);
+            setNotifications(prev => prev.map(n =>
+                n.id === notificationId ? { ...n, unread: false } : n
+            ));
+            toast.success('Đã đánh dấu đã đọc', { position: 'bottom-right', autoClose: 2000 });
+        } catch (error) {
+            console.error('Error marking as read:', error);
+        }
+    };
+
+    const handleMarkAllAsRead = async () => {
+        try {
+            await notificationService.markAllAsRead();
+            setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+            toast.success('Đã đánh dấu tất cả đã đọc', { position: 'bottom-right', autoClose: 2000 });
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
+    };
+
     const filteredNotifs = filter === 'all'
         ? notifications
         : filter === 'unread'
@@ -20,6 +78,16 @@ const Notifications = () => {
             : notifications.filter(n => n.type === filter);
 
     const unreadCount = notifications.filter(n => n.unread).length;
+
+    if (loading) {
+        return (
+            <div className="notifications-page-modern">
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <p>Đang tải thông báo...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="notifications-page-modern">
@@ -30,7 +98,7 @@ const Notifications = () => {
                     <p className="page-subtitle">Cập nhật mới nhất về chuyến xe và hệ thống</p>
                 </div>
                 {unreadCount > 0 && (
-                    <button className="mark-all-read">
+                    <button className="mark-all-read" onClick={handleMarkAllAsRead}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M9 11l3 3L22 4" />
                             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />

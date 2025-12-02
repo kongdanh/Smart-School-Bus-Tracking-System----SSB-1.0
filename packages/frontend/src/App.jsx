@@ -197,7 +197,7 @@ function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<DriverDashboardPage />} />
             <Route path="attendance" element={<DriverAttendance />} />
-            <Route path="checkinout" element={<DriverCheckInOut />} />
+            <Route path="check-in-out" element={<DriverCheckInOut />} />
             <Route path="settings" element={<DriverSettings />} />
             <Route path="routes" element={<DriverRoutes />} />
             <Route path="notifications" element={<DriverNotifications />} />

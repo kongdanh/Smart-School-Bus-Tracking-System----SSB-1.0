@@ -87,6 +87,24 @@ exports.endTrip = async (req, res) => {
             data: { trangThai: 'completed' }
         });
 
+        // ✅ CLEAR ATTENDANCE STATUS: Reset lại trạng thái của tất cả học sinh để chuẩn bị cho chuyến tiếp theo
+        await prisma.attendance.updateMany({
+            where: { lichTrinhId: tripRecord.lichTrinhId },
+            data: {
+                loanDon: false,        // Reset: Chưa đón
+                loanTra: false,        // Reset: Chưa trả
+                thoiGianDon: null,     // Xoá thời gian đón
+                thoiGianTra: null,     // Xoá thời gian trả
+                ghiChu: ''             // Xoá ghi chú
+            }
+        });
+
+        // ✅ RESET STUDENT TRIP STATUS: Đặt lại trạng thái học sinh thành 'pending'
+        await prisma.studentTrip.updateMany({
+            where: { lichTrinhId: tripRecord.lichTrinhId },
+            data: { trangThai: 'pending' }
+        });
+
         // Cập nhật số chuyến hoàn thành của tài xế
         await prisma.taixe.update({
             where: { taiXeId: taiXeId },
@@ -97,7 +115,7 @@ exports.endTrip = async (req, res) => {
             }
         });
 
-        res.json({ success: true, data: updatedTrip });
+        res.json({ success: true, data: updatedTrip, message: '✅ Chuyến xe hoàn thành! Dữ liệu đã reset cho chuyến tiếp theo.' });
 
     } catch (error) {
         console.error('Error ending trip:', error);

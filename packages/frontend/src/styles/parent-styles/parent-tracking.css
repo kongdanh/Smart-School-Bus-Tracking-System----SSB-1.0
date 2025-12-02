@@ -849,3 +849,20 @@
         font-size: 13px;
     }
 }
+
+/* Thêm vào parent-tracking.css */
+
+.status-indicator.status-no-schedule {
+    background: rgba(108, 117, 125, 0.15);
+    color: #6c757d;
+}
+
+.status-badge.status-no-schedule {
+    background: rgba(108, 117, 125, 0.15);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.3);
+}
+
+.status-badge.status-no-schedule .status-dot {
+    background: #6c757d;
+}

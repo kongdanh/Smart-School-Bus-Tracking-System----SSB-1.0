@@ -1,344 +1,376 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { CheckCircle } from "lucide-react";
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import "../../styles/driver-styles/driver-routes.css";
-import {
-    Navigation, Clock, MapPin, Users, CheckCircle,
-    Phone, X, Info, Bus as BusIcon, School
-} from "lucide-react";
+import tripService from "../../services/tripService";
+import attendanceService from "../../services/attendanceService";
+import locationService from "../../services/locationService";
 
-// Mock data - giữ nguyên 100%
-const mockRouteData = {
-    tuyenDuongId: 1,
-    maTuyen: "T001",
-    tenTuyen: "Tuyến 1: Quận 1 - Quận 7",
-    trangThai: "active",
-    tongKhoangCach: "18.5 km",
-    thoiGianUocTinh: "45 phút",
-    stops: [
-        {
-            thuTu: 1,
-            diemDung: {
-                diemDungId: 1,
-                tenDiemDung: "Điểm đón số 1",
-                diaChi: "123 Đường Lê Lợi, Quận 1",
-                vido: 10.7769,
-                kinhdo: 106.7009
-            },
-            students: [
-                { hocSinhId: 1, hoTen: "Nguyễn Văn A", maHS: "HS001" },
-                { hocSinhId: 2, hoTen: "Trần Thị B", maHS: "HS002" }
-            ],
-            status: "pending",
-            arrivalTime: null
-        },
-        {
-            thuTu: 2,
-            diemDung: {
-                diemDungId: 2,
-                tenDiemDung: "Điểm đón số 2",
-                diaChi: "456 Đường Nguyễn Huệ, Quận 1",
-                vido: 10.7739,
-                kinhdo: 106.7019
-            },
-            students: [
-                { hocSinhId: 3, hoTen: "Lê Văn C", maHS: "HS003" }
-            ],
-            status: "pending",
-            arrivalTime: null
-        },
-        {
-            thuTu: 3,
-            diemDung: {
-                diemDungId: 3,
-                tenDiemDung: "Điểm đón số 3",
-                diaChi: "789 Đường Hai Bà Trưng, Quận 3",
-                vido: 10.7889,
-                kinhdo: 106.6919
-            },
-            students: [
-                { hocSinhId: 4, hoTen: "Phạm Thị D", maHS: "HS004" }
-            ],
-            status: "pending",
-            arrivalTime: null
-        },
-        {
-            thuTu: 4,
-            diemDung: {
-                diemDungId: 4,
-                tenDiemDung: "Trường THPT XYZ",
-                diaChi: "321 Đường Võ Văn Tần, Quận 3",
-                vido: 10.7909,
-                kinhdo: 106.6859
-            },
-            students: [],
-            status: "pending",
-            arrivalTime: null,
-            isDestination: true
-        }
-    ]
+// --- CONFIG ICONS ---
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+const busIcon = new L.Icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
+    iconSize: [45, 45],
+    iconAnchor: [22, 22],
+    iconPopupAnchor: [0, -20]
+});
+
+const createStopIcon = (number) => {
+    return L.divIcon({
+        html: `<div style="background-color: #2563eb; color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${number}</div>`,
+        className: 'custom-div-icon',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+    });
 };
 
+// --- POLYLINE LAYER ---
+const PolylineMarkerLayer = ({ polylineCoords, busData }) => {
+    const map = useMap();
+    const polylineRef = useRef(null);
+
+    useEffect(() => {
+        if (!map || !polylineCoords || polylineCoords.length < 2 || !busData?.lat || !busData?.lng) return;
+
+        try {
+            // Logic vẽ lại đường đi từ vị trí xe đến điểm cuối
+            const busLat = busData.lat;
+            const busLng = busData.lng;
+            let closestIdx = 0;
+            let minDist = Infinity;
+
+            for (let i = 0; i < polylineCoords.length; i++) {
+                const coord = polylineCoords[i];
+                const latDiff = coord[0] - busLat;
+                const lngDiff = coord[1] - busLng;
+                const dist = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestIdx = i;
+                }
+            }
+
+            const remaining = polylineCoords.slice(closestIdx);
+
+            if (polylineRef.current) {
+                map.removeLayer(polylineRef.current);
+            }
+
+            if (remaining.length > 0) {
+                const renderer = L.canvas();
+                polylineRef.current = L.polyline(remaining, {
+                    color: '#0284c7',
+                    weight: 6,
+                    opacity: 0.9,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                    renderer: renderer
+                }).addTo(map);
+            }
+
+        } catch (err) {
+            console.error("❌ Error drawing polyline:", err);
+        }
+    }, [map, polylineCoords, busData]);
+
+    return null;
+};
+
+// --- MAIN ROUTES PAGE ---
 export default function RoutesPage() {
     const navigate = useNavigate();
-    const [route, setRoute] = useState(mockRouteData);
+
+    const [currentTrip, setCurrentTrip] = useState(null);
+    const [routeStops, setRouteStops] = useState([]);
+    const [polyLineCoords, setPolyLineCoords] = useState([]);
+    const [busData, setBusData] = useState(null);
     const [currentStopIndex, setCurrentStopIndex] = useState(0);
-    const [showStopDetails, setShowStopDetails] = useState(null);
+    const [stopStudents, setStopStudents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isCheckedIn, setIsCheckedIn] = useState(false);
 
-    const handleCompleteStop = (stopIndex) => {
-        setRoute(prev => ({
-            ...prev,
-            stops: prev.stops.map((stop, index) =>
-                index === stopIndex
-                    ? { ...stop, status: 'completed', arrivalTime: new Date().toISOString() }
-                    : stop
-            )
-        }));
+    // --- LOAD TRIP DATA & CHECK IF CHECKED IN ---
+    useEffect(() => {
+        const loadTrip = async () => {
+            try {
+                setLoading(true);
+                const dashRes = await tripService.getDriverDashboard();
+                const trip = dashRes.data?.currentTrip;
 
-        if (stopIndex < route.stops.length - 1) {
-            setCurrentStopIndex(stopIndex + 1);
+                // Kiểm tra xem có đang 'in_progress' hay không
+                const checkedIn = trip && trip.trangThai === 'in_progress';
+                setIsCheckedIn(checkedIn);
+
+                if (!checkedIn) {
+                    setLoading(false);
+                    return;
+                }
+
+                setCurrentTrip(trip);
+
+                // --- SETUP MẶC ĐỊNH CHO TÀI XẾ 1 (TUYẾN 1) ---
+                // Dữ liệu này khớp với bảng diemdung trong SQL
+                const stops = [
+                    { id: 1, tenDiemDung: "Trường THPT Chuyên Lê Hồng Phong (Q5)", lat: 10.762622, lng: 106.682228, diaChi: "235 Nguyễn Văn Cừ" },
+                    { id: 2, tenDiemDung: "Chợ Bến Thành (Q1)", lat: 10.772542, lng: 106.698021, diaChi: "Đường Lê Lợi" },
+                    { id: 3, tenDiemDung: "Nhà Thờ Đức Bà (Q1)", lat: 10.779785, lng: 106.699018, diaChi: "Công xã Paris" },
+                    { id: 4, tenDiemDung: "Thảo Cầm Viên (Q1)", lat: 10.787602, lng: 106.705139, diaChi: "2 Nguyễn Bỉnh Khiêm" },
+                    { id: 5, tenDiemDung: "Landmark 81 (Bình Thạnh)", lat: 10.794939, lng: 106.721773, diaChi: "720A Điện Biên Phủ" }
+                ];
+
+                setRouteStops(stops);
+                startPolling(trip);
+
+            } catch (err) {
+                console.error("❌ Error:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadTrip();
+    }, [navigate]);
+
+    // --- POLLING BUS & OSRM ---
+    const startPolling = (trip) => {
+        // Poll bus location
+        const locInterval = setInterval(async () => {
+            try {
+                if (!trip?.xebuyt?.xeBuytId) return;
+                const res = await locationService.getBusLocationById(trip.xebuyt.xeBuytId);
+                if (res.success && res.data) {
+                    setBusData({
+                        lat: parseFloat(res.data.vido),
+                        lng: parseFloat(res.data.kinhdo),
+                    });
+                }
+            } catch (err) {
+                // Silent error
+            }
+        }, 1000);
+
+        return () => clearInterval(locInterval);
+    };
+
+    // --- FETCH OSRM WHEN STOPS LOADED ---
+    useEffect(() => {
+        if (routeStops.length < 2) return;
+
+        const fetchOSRM = async () => {
+            try {
+                // OSRM format: lng,lat;lng,lat
+                const coordinates = routeStops.map(s => `${s.lng},${s.lat}`).join(';');
+                const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.code === 'Ok' && data.routes?.[0]) {
+                    // Leaflet format: [lat, lng]
+                    const decodedPath = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    setPolyLineCoords(decodedPath);
+                }
+            } catch (err) {
+                console.error("OSRM error:", err);
+            }
+        };
+
+        fetchOSRM();
+    }, [routeStops]);
+
+    // --- LOAD STUDENTS AT CURRENT STOP ---
+    useEffect(() => {
+        if (!currentTrip || !routeStops[currentStopIndex]) return;
+
+        const loadStudents = async () => {
+            try {
+                // Lấy danh sách học sinh theo lịch trình ID
+                const res = await attendanceService.getStudentsBySchedule(currentTrip.lichTrinhId);
+                const allStudents = res.data.students || [];
+
+                // Chia học sinh giả lập theo từng trạm (vì DB chưa có bảng mapping chi tiết từng em xuống trạm nào)
+                const studentsPerStop = Math.ceil(allStudents.length / routeStops.length);
+                const startIdx = currentStopIndex * studentsPerStop;
+                const students = allStudents.slice(startIdx, startIdx + studentsPerStop);
+
+                setStopStudents(students);
+            } catch (err) {
+                console.error("Error loading students:", err);
+            }
+        };
+
+        loadStudents();
+        const pollInterval = setInterval(loadStudents, 2000); // Check trạng thái 'loanDon' mỗi 2s
+        return () => clearInterval(pollInterval);
+    }, [currentTrip, currentStopIndex, routeStops]);
+
+    // --- ACTIONS ---
+    const handleMarkPickup = async (student) => {
+        if (!currentTrip) return;
+        try {
+            const res = await attendanceService.markPickup(currentTrip.lichTrinhId, student.hocSinhId);
+            if (res.success) {
+                setStopStudents(prev => prev.map(s =>
+                    s.hocSinhId === student.hocSinhId ? { ...s, attendance: res.data } : s
+                ));
+            }
+        } catch (err) {
+            console.error("Error mark pickup:", err);
         }
     };
 
-    const handleNavigate = (address) => {
-        const encodedAddress = encodeURIComponent(address);
-        window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+    const allPickedUp = stopStudents.length === 0 || stopStudents.every(s => s.attendance?.loanDon);
+
+    const handleCompleteStop = () => {
+        if (!allPickedUp) {
+            alert("Vui lòng đón hết học sinh tại trạm này!");
+            return;
+        }
+
+        if (currentStopIndex < routeStops.length - 1) {
+            setCurrentStopIndex(currentStopIndex + 1);
+        } else {
+            alert("🎉 Đã về bến cuối! Hoàn thành chuyến xe.");
+            // Logic kết thúc chuyến có thể thêm ở đây (gọi API endTrip)
+        }
     };
 
-    const formatTime = (dateString) => {
-        if (!dateString) return "--:--";
-        return new Date(dateString).toLocaleTimeString('vi-VN', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
+    const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "";
 
-    const completedStops = route.stops.filter(s => s.status === 'completed').length;
-    const totalStops = route.stops.length;
-    const progressPercentage = (completedStops / totalStops) * 100;
+    const mapCenter = useMemo(() => {
+        if (busData) return [busData.lat, busData.lng];
+        if (routeStops.length > 0) return [routeStops[0].lat, routeStops[0].lng];
+        return [10.762622, 106.682228]; // Mặc định LHP
+    }, [busData, routeStops]);
+
+    if (loading) return <div className="loading-screen">Đang tải thông tin chuyến xe...</div>;
+
+    // --- LOCK UI IF NOT CHECKED IN ---
+    if (!isCheckedIn) {
+        return (
+            <div className="routes-driver-container">
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', zIndex: 9999
+                }}>
+                    <div style={{
+                        backgroundColor: 'white', padding: '40px', borderRadius: '12px',
+                        textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', width: '90%', maxWidth: '400px'
+                    }}>
+                        <div style={{ fontSize: '48px', marginBottom: '20px' }}>🚍</div>
+                        <h2 style={{ color: '#333', marginBottom: '10px' }}>Chưa vào ca</h2>
+                        <p style={{ color: '#666', marginBottom: '30px' }}>
+                            Tài xế <strong>Nguyễn Văn A</strong> chưa bắt đầu chuyến xe.<br />Vui lòng Check-in để bắt đầu.
+                        </p>
+                        <button
+                            onClick={() => navigate('/driver/check-in-out')}
+                            style={{
+                                backgroundColor: '#2563eb', color: 'white', border: 'none',
+                                padding: '12px 32px', borderRadius: '6px', cursor: 'pointer',
+                                fontSize: '16px', fontWeight: 'bold'
+                            }}
+                        >
+                            Đến trang Check-in
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="routes-container">
-            {/* ĐÃ XÓA NÚT BACK - chỉ để lại tiêu đề */}
-            <div className="routes-header">
-                <div className="header-content">
-                    <h1>Chi tiết tuyến đường</h1>
-                    <p>Xem lộ trình và các điểm dừng được giao hôm nay</p>
-                </div>
+        <div className="routes-driver-container">
+            {/* MAP */}
+            <div className="routes-map-section">
+                <MapContainer center={mapCenter} zoom={14} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+                    {polyLineCoords.length > 0 && busData && (
+                        <PolylineMarkerLayer polylineCoords={polyLineCoords} busData={busData} />
+                    )}
+
+                    {busData && (
+                        <Marker position={[busData.lat, busData.lng]} icon={busIcon} zIndexOffset={1000}>
+                            <Popup>Xe Bus (Tài xế 1)</Popup>
+                        </Marker>
+                    )}
+
+                    {routeStops.map((stop, idx) => (
+                        <Marker key={idx} position={[stop.lat, stop.lng]} icon={createStopIcon(idx + 1)}>
+                            <Popup>
+                                <strong>{stop.tenDiemDung}</strong><br />
+                                {stop.diaChi}
+                            </Popup>
+                        </Marker>
+                    ))}
+                </MapContainer>
             </div>
 
-            {/* Route Info Card */}
-            <div className="route-info-card">
-                <div className="route-header">
-                    <div className="route-badge">
-                        <Navigation size={48} strokeWidth={1.8} />
-                        <div>
-                            <h2>{route.tenTuyen}</h2>
-                            <p className="route-code">Mã tuyến: {route.maTuyen}</p>
-                        </div>
-                    </div>
-                    <span className={`status-badge ${route.trangThai}`}>
-                        Đang hoạt động
-                    </span>
+            {/* PANEL */}
+            <div className="routes-panel">
+                <div className="panel-header">
+                    <h2>Lộ trình: Tuyến 1</h2>
+                    <span className="stop-counter">Trạm {currentStopIndex + 1}/{routeStops.length}</span>
                 </div>
 
-                <div className="route-stats">
-                    <div className="stat-item">
-                        <MapPin size={24} />
-                        <div>
-                            <span className="label">Khoảng cách</span>
-                            <span className="value">{route.tongKhoangCach}</span>
-                        </div>
-                    </div>
-                    <div className="stat-item">
-                        <Clock size={24} />
-                        <div>
-                            <span className="label">Thời gian ước tính</span>
-                            <span className="value">{route.thoiGianUocTinh}</span>
-                        </div>
-                    </div>
-                    <div className="stat-item">
-                        <BusIcon size={24} />
-                        <div>
-                            <span className="label">Tổng điểm dừng</span>
-                            <span className="value">{totalStops}</span>
-                        </div>
-                    </div>
-                    <div className="stat-item">
-                        <Users size={24} />
-                        <div>
-                            <span className="label">Học sinh</span>
-                            <span className="value">
-                                {route.stops.reduce((acc, stop) => acc + stop.students.length, 0)}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="route-progress">
-                    <div className="progress-header">
-                        <span>Tiến độ tuyến đường</span>
-                        <span className="progress-text">{completedStops}/{totalStops} điểm dừng hoàn thành</span>
-                    </div>
-                    <div className="progress-bar">
-                        <div
-                            className="progress-fill"
-                            style={{ width: `${progressPercentage}%` }}
-                        ></div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Stops List */}
-            <div className="stops-section">
-                <h3>Các điểm dừng</h3>
-                <div className="stops-timeline">
-                    {route.stops.map((stop, index) => (
-                        <div
-                            key={stop.diemDung.diemDungId}
-                            className={`stop-card ${stop.status} ${index === currentStopIndex ? 'current' : ''}`}
+                <div className="stops-list">
+                    {routeStops.map((stop, idx) => (
+                        <div key={idx}
+                            className={`stop-item ${idx === currentStopIndex ? 'current' : ''} ${idx < currentStopIndex ? 'completed' : ''}`}
                         >
-                            <div className="timeline-wrapper">
-                                <div className={`timeline-dot ${stop.status}`}>
-                                    {stop.status === 'completed' ? (
-                                        <CheckCircle size={28} strokeWidth={2.5} />
-                                    ) : (
-                                        <span>{stop.thuTu}</span>
-                                    )}
-                                </div>
-                                {index < route.stops.length - 1 && (
-                                    <div className={`timeline-line ${stop.status === 'completed' ? 'completed' : ''}`}></div>
-                                )}
+                            <div className="stop-num">{idx + 1}</div>
+                            <div className="stop-detail">
+                                <h4>{stop.tenDiemDung}</h4>
+                                <p>{stop.diaChi}</p>
                             </div>
-
-                            <div className="stop-content">
-                                <div className="stop-header">
-                                    <div className="stop-info">
-                                        <h4>{stop.diemDung.tenDiemDung}</h4>
-                                        <p className="stop-address">
-                                            <MapPin size={16} />
-                                            {stop.diemDung.diaChi}
-                                        </p>
-                                    </div>
-
-                                    {stop.isDestination && (
-                                        <span className="destination-badge">
-                                            <School size={16} />
-                                            Điểm đến
-                                        </span>
-                                    )}
-                                </div>
-
-                                {stop.students.length > 0 && (
-                                    <div className="stop-students">
-                                        <div className="students-header">
-                                            <Users size={18} />
-                                            <span>{stop.students.length} học sinh</span>
-                                        </div>
-                                        <div className="students-list">
-                                            {stop.students.map(student => (
-                                                <div key={student.hocSinhId} className="student-tag">
-                                                    {student.hoTen}
-                                                    <span className="student-id">{student.maHS}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="stop-actions">
-                                    {stop.status === 'completed' && (
-                                        <div className="completed-info">
-                                            <CheckCircle size={18} />
-                                            Đã hoàn thành lúc {formatTime(stop.arrivalTime)}
-                                        </div>
-                                    )}
-
-                                    {stop.status === 'pending' && index === currentStopIndex && (
-                                        <>
-                                            <button
-                                                className="btn-navigate"
-                                                onClick={() => handleNavigate(stop.diemDung.diaChi)}
-                                            >
-                                                <Navigation size={16} />
-                                                Dẫn đường
-                                            </button>
-                                            <button
-                                                className="btn-complete"
-                                                onClick={() => handleCompleteStop(index)}
-                                            >
-                                                <CheckCircle size={16} />
-                                                Hoàn thành điểm dừng
-                                            </button>
-                                            <button
-                                                className="btn-details"
-                                                onClick={() => setShowStopDetails(stop)}
-                                            >
-                                                <Info size={16} />
-                                                Chi tiết
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
+                            {idx < currentStopIndex && <CheckCircle size={16} color="green" />}
                         </div>
                     ))}
                 </div>
-            </div>
 
-            {/* Modal chi tiết điểm dừng */}
-            {showStopDetails && (
-                <div className="modal-overlay" onClick={() => setShowStopDetails(null)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3>{showStopDetails.diemDung.tenDiemDung}</h3>
-                            <button className="btn-close" onClick={() => setShowStopDetails(null)}>
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="detail-section">
-                                <h4>Địa chỉ</h4>
-                                <p>{showStopDetails.diemDung.diaChi}</p>
-                            </div>
+                <div className="current-stop-panel">
+                    <h3>📍 {routeStops[currentStopIndex]?.tenDiemDung}</h3>
+                    <p className="subtitle">{stopStudents.length} học sinh cần đón</p>
 
-                            <div className="detail-section">
-                                <h4>Tọa độ</h4>
-                                <p>Vĩ độ: {showStopDetails.diemDung.vido}, Kinh độ: {showStopDetails.diemDung.kinhdo}</p>
-                            </div>
-
-                            {showStopDetails.students.length > 0 && (
-                                <div className="detail-section">
-                                    <h4>Học sinh tại điểm dừng ({showStopDetails.students.length})</h4>
-                                    <div className="students-detail-list">
-                                        {showStopDetails.students.map(student => (
-                                            <div key={student.hocSinhId} className="student-detail-item">
-                                                <div className="student-avatar-small">
-                                                    {student.hoTen.charAt(0)}
-                                                </div>
-                                                <div className="student-detail-info">
-                                                    <strong>{student.hoTen}</strong>
-                                                    <span>{student.maHS}</span>
-                                                </div>
-                                            </div>
-                                        ))}
+                    <div className="students-list">
+                        {stopStudents.length === 0 && <p className="no-data">Không có học sinh tại trạm này</p>}
+                        {stopStudents.map(s => (
+                            <div key={s.hocSinhId} className={`student-row ${s.attendance?.loanDon ? 'picked' : ''}`}>
+                                <div className="student-info">
+                                    <div className="avatar">{s.hoTen?.[0] || "?"}</div>
+                                    <div>
+                                        <strong>{s.hoTen}</strong>
+                                        <div className="code">{s.maHS}</div>
                                     </div>
                                 </div>
-                            )}
-
-                            <div className="detail-actions">
                                 <button
-                                    className="btn-modal-action primary"
-                                    onClick={() => handleNavigate(showStopDetails.diemDung.diaChi)}
+                                    className={`btn-pickup ${s.attendance?.loanDon ? 'done' : ''}`}
+                                    onClick={() => handleMarkPickup(s)}
+                                    disabled={s.attendance?.loanDon}
                                 >
-                                    <Navigation size={18} />
-                                    Mở bản đồ
+                                    {s.attendance?.loanDon ? `✓ ${formatTime(s.attendance.thoiGianDon)}` : "Đón"}
                                 </button>
                             </div>
-                        </div>
+                        ))}
                     </div>
+
+                    <button
+                        className={`btn-complete-stop ${allPickedUp ? 'enabled' : 'disabled'}`}
+                        onClick={handleCompleteStop}
+                    >
+                        {currentStopIndex === routeStops.length - 1 ? '🏁 Kết thúc chuyến' : 'Tiếp tục ➡'}
+                    </button>
                 </div>
-            )}
+            </div>
         </div>
     );
-}
+}   

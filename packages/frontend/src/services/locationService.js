@@ -1,4 +1,3 @@
-// frontend/src/services/locationService.js
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -22,6 +21,34 @@ axiosInstance.interceptors.request.use(
 );
 
 const locationService = {
+    // --- HÀM QUAN TRỌNG ĐỂ SỬA LỖI BUS STATUS ---
+    getCurrentLocation: () => {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                console.warn("Trình duyệt không hỗ trợ Geolocation");
+                return resolve({ success: false, message: "Không hỗ trợ GPS" });
+            }
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    resolve({
+                        success: true,
+                        data: {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            speed: position.coords.speed ? (position.coords.speed * 3.6).toFixed(1) : 0
+                        }
+                    });
+                },
+                (error) => {
+                    console.error("Lỗi lấy vị trí:", error);
+                    // Trả về success false để không crash app
+                    resolve({ success: false, error: error.message });
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        });
+    },
+
     // Lấy vị trí tất cả xe buýt
     getAllBusLocations: async () => {
         try {
@@ -68,9 +95,8 @@ const locationService = {
         }
     },
 
-    // Theo dõi vị trí real-time (WebSocket hoặc polling)
+    // Theo dõi vị trí real-time (Polling)
     subscribeToLocationUpdates: (busId, callback) => {
-        // Implement WebSocket hoặc polling
         const interval = setInterval(async () => {
             try {
                 const result = await locationService.getBusLocationById(busId);
@@ -78,9 +104,8 @@ const locationService = {
             } catch (error) {
                 console.error("Location update error:", error);
             }
-        }, 5000); // Cập nhật mỗi 5 giây
+        }, 5000);
 
-        // Return unsubscribe function
         return () => clearInterval(interval);
     }
 };

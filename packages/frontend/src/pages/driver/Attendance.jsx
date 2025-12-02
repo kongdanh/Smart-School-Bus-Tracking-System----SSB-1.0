@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 import attendanceService from "../../services/attendanceService";
 import tripService from "../../services/tripService";
 import "../../styles/driver-styles/driver-attendance.css";
 
 export default function AttendancePage() {
+    const navigate = useNavigate();
     const [students, setStudents] = useState([]);
     const [currentTrip, setCurrentTrip] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isCheckedIn, setIsCheckedIn] = useState(false);
+    const [lastTripId, setLastTripId] = useState(null);  // Track trip ID to avoid reload when trip doesn't change
 
     // State cho search/filter
     const [searchTerm, setSearchTerm] = useState("");
@@ -18,29 +22,67 @@ export default function AttendancePage() {
     const [showNoteModal, setShowNoteModal] = useState(false);
     const [noteText, setNoteText] = useState("");
 
-    // 1. Load dữ liệu khi vào trang
+    // 1. Load dữ liệu khi vào trang và polling mỗi giây để cập nhật attendance realtime
     useEffect(() => {
-        fetchData();
+        fetchTripStatus();  // Initial check-in status
+
+        // Poll mỗi 3 giây để kiểm tra check-in status (check-in/out xảy ra hết giây)
+        const tripStatusInterval = setInterval(fetchTripStatus, 3000);
+
+        return () => clearInterval(tripStatusInterval);
     }, []);
 
-    const fetchData = async () => {
+    // 2. Khi trip thay đổi, fetch danh sách học sinh (chỉ fetch khi trip ID khác)
+    useEffect(() => {
+        if (isCheckedIn && currentTrip && currentTrip.lichTrinhId !== lastTripId) {
+            fetchStudents();
+            setLastTripId(currentTrip.lichTrinhId);
+        }
+    }, [isCheckedIn, currentTrip?.lichTrinhId]);
+
+    // 3. Khi trip đang active, poll attendance updates mỗi 2 giây
+    useEffect(() => {
+        if (!isCheckedIn || !currentTrip) return;
+
+        const attendanceInterval = setInterval(fetchStudents, 2000);
+
+        return () => clearInterval(attendanceInterval);
+    }, [isCheckedIn, currentTrip?.lichTrinhId]);
+
+    const fetchTripStatus = async () => {
         try {
-            setLoading(true);
-            // B1: Lấy thông tin chuyến xe đang chạy
+            // B1: Chỉ kiểm tra check-in status (lightweight)
             const dashboardRes = await tripService.getDriverDashboard();
             const activeTrip = dashboardRes.data.currentTrip;
+            const checkedIn = activeTrip && activeTrip.trangThai === 'in_progress';
 
-            if (activeTrip) {
+            setIsCheckedIn(checkedIn);
+
+            if (activeTrip && checkedIn) {
                 setCurrentTrip(activeTrip);
-                // B2: Lấy danh sách học sinh của chuyến này
-                const studentRes = await attendanceService.getStudentsBySchedule(activeTrip.lichTrinhId);
-                setStudents(studentRes.data.students || []);
             } else {
-                toast.info("Bạn chưa bắt đầu chuyến xe nào. Vui lòng vào Check-in trước.");
+                setCurrentTrip(null);
+                setStudents([]);
+                setLastTripId(null);
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Lỗi tải dữ liệu điểm danh");
+            console.error('Error checking trip status:', error);
+        }
+    };
+
+    const fetchStudents = async () => {
+        try {
+            if (!currentTrip) return;
+
+            setLoading(true);
+            // B2: Lấy danh sách học sinh của chuyến này
+            const studentRes = await attendanceService.getStudentsBySchedule(currentTrip.lichTrinhId);
+            setStudents(studentRes.data.students || []);
+        } catch (error) {
+            console.error('Error fetching students:', error);
+            if (error.response?.status !== 401) {
+                // Chỉ show error nếu không phải auth error
+            }
         } finally {
             setLoading(false);
         }
@@ -160,12 +202,41 @@ export default function AttendancePage() {
 
     if (loading) return <div className="loading-screen">Đang tải danh sách lớp...</div>;
 
-    if (!currentTrip) return (
-        <div className="empty-state">
-            <h2>⛔ Chưa có chuyến xe nào đang chạy</h2>
-            <p>Vui lòng quay lại trang Check-in và bấm "Vào Ca / Bắt Đầu" để kích hoạt lộ trình.</p>
-        </div>
-    );
+    // ✅ LOCK UI: Nếu chưa check-in thì hiển thị modal overlay
+    if (!isCheckedIn) {
+        return (
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', zIndex: 9999
+            }}>
+                {/* Modal */}
+                <div style={{
+                    backgroundColor: 'white', padding: '40px', borderRadius: '12px',
+                    textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                    maxWidth: '400px'
+                }}>
+                    <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔒</div>
+                    <h2 style={{ color: '#333', marginBottom: '15px' }}>Trang này chưa khả dụng</h2>
+                    <p style={{ color: '#666', marginBottom: '30px', lineHeight: '1.6' }}>
+                        Bạn cần <strong>Vào ca & Bắt đầu chuyến xe</strong> từ trang <strong>Check-in</strong> trước tiên.
+                    </p>
+                    <button
+                        onClick={() => navigate('/driver/check-in-out')}
+                        style={{
+                            backgroundColor: '#2563eb', color: 'white', border: 'none',
+                            padding: '12px 32px', borderRadius: '6px', cursor: 'pointer',
+                            fontSize: '16px', fontWeight: 'bold'
+                        }}
+                    >
+                        📍 Đi tới Check-in
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (loading) return <div className="loading-screen">Đang tải danh sách lớp...</div>;
 
     return (
         <div className="attendance-master">

@@ -12,50 +12,33 @@ exports.getStudentsBySchedule = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
         }
 
-        // Lấy thông tin lịch trình
         const schedule = await prisma.lichtrinh.findUnique({
             where: { lichTrinhId: parseInt(lichTrinhId) },
-            include: {
-                tuyenduong: true,
-                xebuyt: true
-            }
+            include: { tuyenduong: true, xebuyt: true }
         });
 
         if (!schedule || schedule.taiXeId !== taiXeId) {
             return res.status(403).json({ success: false, message: 'Không có quyền truy cập lịch trình này' });
         }
 
-        // Lấy danh sách học sinh theo lịch trình
         const studentTrips = await prisma.studentTrip.findMany({
             where: { lichTrinhId: parseInt(lichTrinhId) },
             include: {
                 hocsinh: {
                     include: {
-                        phuhuynh: {
-                            include: {
-                                user: true
-                            }
-                        }
+                        phuhuynh: { include: { user: true } }
                     }
                 }
             }
         });
 
-        // Lấy thông tin điểm danh hiện có
         const attendances = await prisma.attendance.findMany({
-            where: {
-                lichTrinhId: parseInt(lichTrinhId),
-                taiXeId: taiXeId
-            }
+            where: { lichTrinhId: parseInt(lichTrinhId), taiXeId: taiXeId }
         });
 
-        // Map attendance data
         const attendanceMap = {};
-        attendances.forEach(att => {
-            attendanceMap[att.hocSinhId] = att;
-        });
+        attendances.forEach(att => { attendanceMap[att.hocSinhId] = att; });
 
-        // Kết hợp dữ liệu
         const students = studentTrips.map(st => ({
             hocSinhId: st.hocsinh.hocSinhId,
             maHS: st.hocsinh.maHS,
@@ -66,11 +49,7 @@ exports.getStudentsBySchedule = async (req, res) => {
             soDienThoaiPH: st.hocsinh.soDienThoaiPH,
             avatar: st.hocsinh.avatar,
             attendance: attendanceMap[st.hocsinh.hocSinhId] || {
-                loanDon: false,
-                loanTra: false,
-                thoiGianDon: null,
-                thoiGianTra: null,
-                ghiChu: ''
+                loanDon: false, loanTra: false, thoiGianDon: null, thoiGianTra: null, ghiChu: ''
             }
         }));
 
@@ -103,16 +82,7 @@ exports.markPickup = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
         }
 
-        // Kiểm tra lịch trình thuộc về tài xế
-        const schedule = await prisma.lichtrinh.findUnique({
-            where: { lichTrinhId: parseInt(lichTrinhId) }
-        });
-
-        if (!schedule || schedule.taiXeId !== taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập lịch trình này' });
-        }
-
-        // Tạo hoặc cập nhật attendance
+        // 1. Update/Create Attendance
         const attendance = await prisma.attendance.upsert({
             where: {
                 lichTrinhId_hocSinhId: {
@@ -132,6 +102,40 @@ exports.markPickup = async (req, res) => {
                 thoiGianDon: new Date()
             }
         });
+
+        // 2. Update StudentTrip status
+        await prisma.studentTrip.update({
+            where: {
+                lichTrinhId_hocSinhId: {
+                    lichTrinhId: parseInt(lichTrinhId),
+                    hocSinhId: parseInt(hocSinhId)
+                }
+            },
+            data: { trangThai: 'picked_up' }
+        });
+
+        // ============================================================
+        // 3. TỰ ĐỘNG TẠO THÔNG BÁO CHO PHỤ HUYNH (TRIGGER NOTIFICATION)
+        // ============================================================
+        const studentInfo = await prisma.hocsinh.findUnique({
+            where: { hocSinhId: parseInt(hocSinhId) },
+            select: { hoTen: true, phuHuynhId: true }
+        });
+
+        if (studentInfo && studentInfo.phuHuynhId) {
+            const timeString = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            await prisma.thongbao.create({
+                data: {
+                    phuHuynhId: studentInfo.phuHuynhId,
+                    loai: 'pickup', // Khớp với switch case ở Frontend
+                    noiDung: `Học sinh ${studentInfo.hoTen} đã được đón lên xe lúc ${timeString}.`,
+                    thoiGianGui: new Date(),
+                    daDoc: false
+                }
+            });
+            console.log(`🔔 Notification created for Parent ID: ${studentInfo.phuHuynhId}`);
+        }
+        // ============================================================
 
         res.json({ success: true, data: attendance });
 
@@ -147,11 +151,8 @@ exports.markDropoff = async (req, res) => {
         const { lichTrinhId, hocSinhId } = req.body;
         const taiXeId = req.user.taixe?.taiXeId;
 
-        if (!taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-        }
+        if (!taiXeId) return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
 
-        // Kiểm tra đã đón chưa
         const existingAttendance = await prisma.attendance.findUnique({
             where: {
                 lichTrinhId_hocSinhId: {
@@ -165,7 +166,6 @@ exports.markDropoff = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Phải đón học sinh trước khi trả' });
         }
 
-        // Cập nhật trả học sinh
         const attendance = await prisma.attendance.update({
             where: {
                 lichTrinhId_hocSinhId: {
@@ -173,11 +173,20 @@ exports.markDropoff = async (req, res) => {
                     hocSinhId: parseInt(hocSinhId)
                 }
             },
-            data: {
-                loanTra: true,
-                thoiGianTra: new Date()
-            }
+            data: { loanTra: true, thoiGianTra: new Date() }
         });
+
+        await prisma.studentTrip.update({
+            where: {
+                lichTrinhId_hocSinhId: {
+                    lichTrinhId: parseInt(lichTrinhId),
+                    hocSinhId: parseInt(hocSinhId)
+                }
+            },
+            data: { trangThai: 'completed' }
+        });
+
+        // (Option) Có thể thêm tạo thông báo "Đã trả học sinh" tại đây tương tự markPickup
 
         res.json({ success: true, data: attendance });
 
@@ -192,10 +201,7 @@ exports.unmarkPickup = async (req, res) => {
     try {
         const { lichTrinhId, hocSinhId } = req.body;
         const taiXeId = req.user.taixe?.taiXeId;
-
-        if (!taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-        }
+        if (!taiXeId) return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
 
         const attendance = await prisma.attendance.update({
             where: {
@@ -204,16 +210,20 @@ exports.unmarkPickup = async (req, res) => {
                     hocSinhId: parseInt(hocSinhId)
                 }
             },
-            data: {
-                loanDon: false,
-                thoiGianDon: null,
-                loanTra: false,
-                thoiGianTra: null
-            }
+            data: { loanDon: false, thoiGianDon: null, loanTra: false, thoiGianTra: null }
+        });
+
+        await prisma.studentTrip.update({
+            where: {
+                lichTrinhId_hocSinhId: {
+                    lichTrinhId: parseInt(lichTrinhId),
+                    hocSinhId: parseInt(hocSinhId)
+                }
+            },
+            data: { trangThai: 'pending' }
         });
 
         res.json({ success: true, data: attendance });
-
     } catch (error) {
         console.error('Error unmarking pickup:', error);
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
@@ -225,10 +235,7 @@ exports.unmarkDropoff = async (req, res) => {
     try {
         const { lichTrinhId, hocSinhId } = req.body;
         const taiXeId = req.user.taixe?.taiXeId;
-
-        if (!taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-        }
+        if (!taiXeId) return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
 
         const attendance = await prisma.attendance.update({
             where: {
@@ -237,29 +244,22 @@ exports.unmarkDropoff = async (req, res) => {
                     hocSinhId: parseInt(hocSinhId)
                 }
             },
-            data: {
-                loanTra: false,
-                thoiGianTra: null
-            }
+            data: { loanTra: false, thoiGianTra: null }
         });
 
         res.json({ success: true, data: attendance });
-
     } catch (error) {
         console.error('Error unmarking dropoff:', error);
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
 
-// Thêm ghi chú cho học sinh
+// Thêm ghi chú
 exports.addNote = async (req, res) => {
     try {
         const { lichTrinhId, hocSinhId, ghiChu } = req.body;
         const taiXeId = req.user.taixe?.taiXeId;
-
-        if (!taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-        }
+        if (!taiXeId) return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
 
         const attendance = await prisma.attendance.upsert({
             where: {
@@ -268,9 +268,7 @@ exports.addNote = async (req, res) => {
                     hocSinhId: parseInt(hocSinhId)
                 }
             },
-            update: {
-                ghiChu: ghiChu
-            },
+            update: { ghiChu: ghiChu },
             create: {
                 lichTrinhId: parseInt(lichTrinhId),
                 hocSinhId: parseInt(hocSinhId),
@@ -278,31 +276,24 @@ exports.addNote = async (req, res) => {
                 ghiChu: ghiChu
             }
         });
-
         res.json({ success: true, data: attendance });
-
     } catch (error) {
         console.error('Error adding note:', error);
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
 
-// Điểm danh tất cả học sinh cùng lúc
+// Điểm danh tất cả
 exports.markAllPickup = async (req, res) => {
     try {
         const { lichTrinhId } = req.body;
         const taiXeId = req.user.taixe?.taiXeId;
+        if (!taiXeId) return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
 
-        if (!taiXeId) {
-            return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-        }
-
-        // Lấy danh sách học sinh
         const studentTrips = await prisma.studentTrip.findMany({
             where: { lichTrinhId: parseInt(lichTrinhId) }
         });
 
-        // Tạo attendance cho tất cả
         const attendances = await Promise.all(
             studentTrips.map(st =>
                 prisma.attendance.upsert({
@@ -312,10 +303,7 @@ exports.markAllPickup = async (req, res) => {
                             hocSinhId: st.hocSinhId
                         }
                     },
-                    update: {
-                        loanDon: true,
-                        thoiGianDon: new Date()
-                    },
+                    update: { loanDon: true, thoiGianDon: new Date() },
                     create: {
                         lichTrinhId: parseInt(lichTrinhId),
                         hocSinhId: st.hocSinhId,
@@ -327,29 +315,25 @@ exports.markAllPickup = async (req, res) => {
             )
         );
 
-        res.json({ success: true, data: attendances });
+        await prisma.studentTrip.updateMany({
+            where: { lichTrinhId: parseInt(lichTrinhId) },
+            data: { trangThai: 'picked_up' }
+        });
 
+        res.json({ success: true, data: attendances });
     } catch (error) {
         console.error('Error marking all pickup:', error);
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
 
-// Lấy báo cáo điểm danh theo lịch trình
+// Lấy báo cáo
 exports.getAttendanceReport = async (req, res) => {
     try {
         const { lichTrinhId } = req.params;
-
         const attendances = await prisma.attendance.findMany({
             where: { lichTrinhId: parseInt(lichTrinhId) },
-            include: {
-                hocsinh: true,
-                taixe: {
-                    include: {
-                        user: true
-                    }
-                }
-            }
+            include: { hocsinh: true, taixe: { include: { user: true } } }
         });
 
         const stats = {
@@ -360,7 +344,6 @@ exports.getAttendanceReport = async (req, res) => {
         };
 
         res.json({ success: true, data: { attendances, stats } });
-
     } catch (error) {
         console.error('Error getting attendance report:', error);
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
