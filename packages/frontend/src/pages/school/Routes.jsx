@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
+import schoolService from "../../services/schoolService";
+import { toast } from "react-toastify";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "../../styles/school-styles/school-routes.css";
@@ -13,127 +16,84 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function SchoolRoutes() {
+  const navigate = useNavigate();
+  const mapRef = useRef(null);
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [routes, setRoutes] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const createIcon = (color, number) => {
-    return L.divIcon({
-      html: `<div style="background-color: ${color}; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 14px;">${number}</div>`,
-      className: 'custom-div-icon',
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-  };
-
   useEffect(() => {
-    const fetchRoutesData = async () => {
-      try {
-        setLoading(true);
-
-        const routeConfigs = [
-          {
-            id: "A1",
-            name: "Route A1",
-            description: "East District - City Center",
-            color: "#10b981",
-            coordinates: [
-              [10.762622, 106.660172],
-              [10.7685, 106.6825],
-              [10.776889, 106.700806]
-            ]
-          },
-          {
-            id: "B2",
-            name: "Route B2",
-            description: "West District - City Center",
-            color: "#f59e0b",
-            coordinates: [
-              [10.762622, 106.660172],
-              [10.7565, 106.6705],
-              [10.7685, 106.6825],
-              [10.776889, 106.700806]
-            ]
-          },
-          {
-            id: "C3",
-            name: "Route C3",
-            description: "South District - City Center",
-            color: "#3b82f6",
-            coordinates: [
-              [10.762622, 106.660172],
-              [10.7585, 106.6705],
-              [10.7645, 106.6805],
-              [10.7705, 106.6905],
-              [10.776889, 106.700806]
-            ]
-          }
-        ];
-
-        const routePromises = routeConfigs.map(async (config) => {
-          try {
-            const coordString = config.coordinates
-              .map(coord => `${coord[1]},${coord[0]}`)
-              .join(';');
-
-            const res = await fetch(
-              `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`
-            );
-
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-
-            const data = await res.json();
-
-            if (data.routes && data.routes.length > 0) {
-              const route = data.routes[0];
-              const routeCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-
-              return {
-                ...config,
-                stops: config.coordinates.length,
-                status: Math.random() > 0.3 ? "active" : "stopped",
-                statusText: Math.random() > 0.3 ? "Active" : "Stopped",
-                routeCoordinates: routeCoords,
-                distance: Math.round(route.distance / 1000),
-                duration: Math.round(route.duration / 60),
-                stopCoordinates: config.coordinates,
-                students: Math.floor(Math.random() * 35 + 15),
-                buses: Math.floor(Math.random() * 2 + 1)
-              };
-            }
-          } catch (err) {
-            console.error(`Error loading route ${config.name}:`, err);
-            return {
-              ...config,
-              stops: config.coordinates.length,
-              status: "error",
-              statusText: "Error",
-              routeCoordinates: config.coordinates,
-              stopCoordinates: config.coordinates,
-              distance: 0,
-              duration: 0,
-              students: 0,
-              buses: 0
-            };
-          }
-        });
-
-        const fetchedRoutes = await Promise.all(routePromises);
-        setRoutes(fetchedRoutes);
-      } catch (err) {
-        console.error("Error loading routes:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRoutesData();
+    fetchSchedules();
   }, []);
 
-  const filteredRoutes = routes.filter(route =>
-    route.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    route.description.toLowerCase().includes(searchTerm.toLowerCase())
+  // Chọn lịch trình đầu tiên khi load xong
+  useEffect(() => {
+    if (!loading && schedules.length > 0 && !selectedRoute) {
+      setSelectedRoute(schedules[0]);
+    }
+  }, [loading, schedules, selectedRoute]);
+
+  // Fit map bounds when route changes
+  useEffect(() => {
+    if (selectedRoute && selectedRoute.stops && selectedRoute.stops.length > 0 && mapRef.current) {
+      const validStops = selectedRoute.stops.filter(stop =>
+        stop.vido && stop.kinhdo &&
+        !isNaN(parseFloat(stop.vido)) && !isNaN(parseFloat(stop.kinhdo))
+      );
+
+      if (validStops.length > 0) {
+        const bounds = L.latLngBounds(
+          validStops.map(stop => [parseFloat(stop.vido), parseFloat(stop.kinhdo)])
+        );
+        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      }
+    }
+  }, [selectedRoute]);
+
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true);
+      const response = await schoolService.getAllSchedules?.();
+
+      if (response?.success) {
+        const schedulesList = response.data || [];
+
+        // Map schedules to route format
+        const routes = schedulesList.map((schedule, idx) => ({
+          id: schedule.lichTrinhId || schedule.id || `schedule-${idx}`,
+          lichTrinhId: schedule.lichTrinhId,
+          name: `Lịch trình ${schedule.lichTrinhId || idx + 1}`,
+          status: schedule.trangThai || 'stopped',
+          statusText: schedule.trangThai === 'active' ? 'Đang hoạt động' : 'Dừng',
+          stops: schedule.tuyenduong?.diemDung || [],
+          students: schedule.studentTrips?.map(st => st.hocsinh) || [],
+          gioKhoiHanh: schedule.gioKhoiHanh,
+          gioKetThuc: schedule.gioKetThuc,
+          xeBuyt: schedule.xebuyt,
+          taiXe: schedule.taixe,
+          scheduleData: schedule
+        }));
+
+        setSchedules(routes);
+      } else {
+        toast.warning("Không thể tải lịch trình");
+        setSchedules([]);
+      }
+    } catch (error) {
+      console.error('Error fetching schedules:', error);
+      setSchedules([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewSchedule = (route) => {
+    setSelectedRoute(route);
+  };
+
+  const filteredRoutes = schedules.filter(route =>
+    route.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -141,7 +101,7 @@ export default function SchoolRoutes() {
       <div className="school-routes-container">
         <div className="loading-state">
           <div className="spinner"></div>
-          <h3>Loading routes...</h3>
+          <h3>Đang tải lịch trình...</h3>
         </div>
       </div>
     );
@@ -152,16 +112,16 @@ export default function SchoolRoutes() {
       {/* Header */}
       <div className="routes-header">
         <div className="header-content">
-          <h1>Route Management</h1>
-          <p className="routes-subtitle">View and manage bus routes with real-time data</p>
+          <h1>Quản Lý Lịch Trình</h1>
+          <p className="routes-subtitle">Xem và quản lý lịch trình với bản đồ thời gian thực</p>
         </div>
         <div className="header-actions">
-          <button className="btn-add">
+          <button className="btn-add" onClick={() => navigate('/school/add-route')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Add Route
+            Tạo Tuyến Mới
           </button>
         </div>
       </div>
@@ -175,128 +135,147 @@ export default function SchoolRoutes() {
           </svg>
           <input
             type="text"
-            placeholder="Search routes..."
+            placeholder="Tìm kiếm lịch trình..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content Layout: Sidebar + Map */}
       <div className="routes-content">
-        {/* Routes List */}
-        <div className="routes-list">
-          <h3>All Routes ({filteredRoutes.length})</h3>
+        {/* Left Sidebar - Schedule List */}
+        <div className="routes-sidebar">
+          <div className="sidebar-header">
+            <h3>Danh Sách Lịch Trình ({filteredRoutes.length})</h3>
+          </div>
           <div className="route-items">
-            {filteredRoutes.map((route) => (
-              <div
-                key={route.id}
-                className={`route-item ${route.status} ${selectedRoute?.id === route.id ? 'selected' : ''}`}
-                onClick={() => setSelectedRoute(route)}
-              >
-                <div className="route-item-header">
-                  <div className="route-color" style={{ backgroundColor: route.color }}></div>
-                  <div className="route-info">
-                    <h4>{route.name}</h4>
-                    <p>{route.description}</p>
-                  </div>
-                </div>
-
-                <div className="route-stats">
-                  <div className="route-stat">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
-                    <span>{route.stops} stops</span>
-                  </div>
-                  <div className="route-stat">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                    <span>{route.students} students</span>
-                  </div>
-                </div>
-
-                {route.distance > 0 && (
-                  <div className="route-details">
-                    <span>📏 {route.distance}km</span>
-                    <span>⏱️ {route.duration} mins</span>
-                    <span className={`status-badge ${route.status}`}>
+            {filteredRoutes.length > 0 ? (
+              filteredRoutes.map((route) => (
+                <div
+                  key={route.id}
+                  className={`route-item ${selectedRoute?.id === route.id ? 'active' : ''}`}
+                  onClick={() => handleViewSchedule(route)}
+                >
+                  <div className="route-item-content">
+                    <div className="route-item-title">#{route.lichTrinhId || route.id}</div>
+                    <div className="route-item-time">
+                      {route.gioKhoiHanh} - {route.gioKetThuc}
+                    </div>
+                    <div className="route-item-bus">
+                      🚌 {route.xeBuyt?.bienSoXe || 'N/A'}
+                    </div>
+                    <div className="route-item-driver">
+                      👤 {route.taiXe?.hoTen || 'N/A'}
+                    </div>
+                    <div className="route-item-stops">
+                      📍 {route.stops?.length || 0} điểm dừng
+                    </div>
+                    <div className={`route-item-status ${route.status}`}>
                       <span className="status-dot"></span>
                       {route.statusText}
-                    </span>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              ))
+            ) : (
+              <div className="no-routes">Không có lịch trình nào</div>
+            )}
           </div>
         </div>
 
-        {/* Map */}
-        <div className="route-map-container">
-          <div className="map-header">
-            <h3>Route Map</h3>
-            {selectedRoute && (
-              <div className="selected-route-info">
-                <div className="route-color-indicator" style={{ backgroundColor: selectedRoute.color }}></div>
-                <span>{selectedRoute.name}</span>
+        {/* Right Side - Map */}
+        <div className="routes-map-section">
+          {selectedRoute ? (
+            <>
+              <div className="map-header">
+                <h3>Tuyến Đường Lịch Trình #{selectedRoute.lichTrinhId || selectedRoute.id}</h3>
               </div>
-            )}
-          </div>
+              <MapContainer
+                ref={mapRef}
+                center={[10.8231, 106.6297]}
+                zoom={12}
+                className="route-map"
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; OpenStreetMap contributors'
+                />
 
-          <div className="map-wrapper">
-            <MapContainer
-              center={[10.762622, 106.660172]}
-              zoom={12}
-              scrollWheelZoom
-              style={{ height: "100%", width: "100%" }}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-
-              {routes.map((route) => (
-                <React.Fragment key={route.id}>
-                  {route.routeCoordinates && route.routeCoordinates.length > 0 && (
+                {/* Draw polyline through stops with coordinates */}
+                {selectedRoute.stops &&
+                  selectedRoute.stops.filter(stop => stop.vido && stop.kinhdo).length > 1 && (
                     <Polyline
-                      positions={route.routeCoordinates}
-                      pathOptions={{
-                        color: selectedRoute?.id === route.id ? route.color : '#cccccc',
-                        weight: selectedRoute?.id === route.id ? 5 : 3,
-                        opacity: selectedRoute?.id === route.id ? 1 : 0.5
-                      }}
+                      positions={selectedRoute.stops
+                        .filter(stop => stop.vido && stop.kinhdo)
+                        .map(stop => [parseFloat(stop.vido), parseFloat(stop.kinhdo)])}
+                      color="#e94560"
+                      weight={3}
+                      opacity={0.8}
                     />
                   )}
 
-                  {route.stopCoordinates && route.stopCoordinates.map((coord, stopIndex) => (
-                    <Marker
-                      key={`${route.id}-stop-${stopIndex}`}
-                      position={coord}
-                      icon={createIcon(route.color, stopIndex + 1)}
+                {/* Markers for all stops (with or without coordinates) */}
+                {selectedRoute.stops &&
+                  selectedRoute.stops.map((stop, idx) => {
+                    // Nếu có toạ độ thì hiển thị marker trên map
+                    if (stop.vido && stop.kinhdo) {
+                      const lat = parseFloat(stop.vido);
+                      const lng = parseFloat(stop.kinhdo);
+                      if (!isNaN(lat) && !isNaN(lng)) {
+                        return (
+                          <Marker key={idx} position={[lat, lng]}>
+                            <Popup>
+                              <div style={{ fontSize: '12px' }}>
+                                <strong>#{idx + 1}. {stop.tenDiemDung}</strong>
+                                <p style={{ margin: '4px 0', color: '#666' }}>{stop.diaChi}</p>
+                              </div>
+                            </Popup>
+                          </Marker>
+                        );
+                      }
+                    }
+                    return null;
+                  })}
+
+                {/* Display stops info in a sidebar inside map if no coordinates */}
+                {selectedRoute.stops &&
+                  selectedRoute.stops.filter(s => !s.vido || !s.kinhdo).length > 0 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: '10px',
+                        left: '10px',
+                        background: 'rgba(0,0,0,0.8)',
+                        color: '#fff',
+                        padding: '10px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        maxWidth: '200px',
+                        zIndex: 400,
+                      }}
                     >
-                      <Popup>
-                        <div className="map-popup">
-                          <h4>{route.name}</h4>
-                          <p>Stop {stopIndex + 1}</p>
-                          <div className="popup-info">
-                            <span>Status: {route.statusText}</span>
-                            {route.distance > 0 && (
-                              <span>{route.distance}km • {route.duration} mins</span>
-                            )}
+                      <strong style={{ display: 'block', marginBottom: '8px' }}>
+                        ⚠️ Điểm dừng chưa có toạ độ:
+                      </strong>
+                      {selectedRoute.stops
+                        .filter(s => !s.vido || !s.kinhdo)
+                        .map((stop, idx) => (
+                          <div key={idx} style={{ marginBottom: '4px' }}>
+                            #{idx + 1}. {stop.tenDiemDung}
                           </div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
-                </React.Fragment>
-              ))}
-            </MapContainer>
-          </div>
+                        ))}
+                    </div>
+                  )}
+              </MapContainer>
+            </>
+          ) : (
+            <div className="map-empty">
+              <div className="empty-message">
+                <p>Đang tải dữ liệu lịch trình...</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

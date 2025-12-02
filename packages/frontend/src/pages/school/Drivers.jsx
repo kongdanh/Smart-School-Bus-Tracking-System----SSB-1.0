@@ -1,73 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import schoolService from '../../services/schoolService';
+import { exportDrivers } from '../../utils/exportUtils';
+import { toast } from 'react-toastify';
 import '../../styles/school-styles/school-drivers.css';
 
 const Drivers = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [drivers, setDrivers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data từ Prisma schema
-  const [drivers] = useState([
-    {
-      taiXeId: 1,
-      hoTen: 'Nguyễn Văn An',
-      soDienThoai: '+84 901 234 567',
-      bienSoCapphep: 'B2-12345',
-      trangThai: 'active',
-      gioHeBay: 4.8,
-      soChuyenHT: 245,
-      busNumber: '29B-12345',
-      route: 'Route A',
-      avatar: 'N'
-    },
-    {
-      taiXeId: 2,
-      hoTen: 'Trần Văn Bình',
-      soDienThoai: '+84 902 345 678',
-      bienSoCapphep: 'B2-23456',
-      trangThai: 'active',
-      gioHeBay: 4.5,
-      soChuyenHT: 198,
-      busNumber: '29B-67890',
-      route: 'Route B',
-      avatar: 'T'
-    },
-    {
-      taiXeId: 3,
-      hoTen: 'Lê Thị Cẩm',
-      soDienThoai: '+84 903 456 789',
-      bienSoCapphep: 'B2-34567',
-      trangThai: 'inactive',
-      gioHeBay: 4.7,
-      soChuyenHT: 312,
-      busNumber: '29B-11111',
-      route: 'Route C',
-      avatar: 'L'
-    },
-    {
-      taiXeId: 4,
-      hoTen: 'Phạm Văn Dũng',
-      soDienThoai: '+84 904 567 890',
-      bienSoCapphep: 'B2-45678',
-      trangThai: 'active',
-      gioHeBay: 4.9,
-      soChuyenHT: 156,
-      busNumber: '29B-22222',
-      route: 'Route D',
-      avatar: 'P'
-    },
-    {
-      taiXeId: 5,
-      hoTen: 'Hoàng Văn Em',
-      soDienThoai: '+84 905 678 901',
-      bienSoCapphep: 'B2-56789',
-      trangThai: 'active',
-      gioHeBay: 4.6,
-      soChuyenHT: 289,
-      busNumber: '29B-33333',
-      route: 'Route E',
-      avatar: 'H'
+  useEffect(() => {
+    fetchDrivers();
+  }, []);
+
+  const fetchDrivers = async () => {
+    try {
+      setLoading(true);
+      const response = await schoolService.getAllDrivers();
+
+      if (response.success) {
+        setDrivers(response.data || []);
+      } else {
+        toast.warning("Không thể tải danh sách tài xế");
+      }
+    } catch (error) {
+      console.error('Error fetching drivers:', error);
+      toast.error("Lỗi khi tải danh sách tài xế");
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const filteredDrivers = drivers.filter(driver => {
     const matchesSearch = driver.hoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -88,7 +53,7 @@ const Drivers = () => {
           <h1>Drivers Management</h1>
           <p className="header-subtitle">Manage bus drivers and their performance</p>
         </div>
-        <button className="btn-add-driver">
+        <button className="btn-add-driver" onClick={() => navigate('/school/drivers/add')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
@@ -179,13 +144,13 @@ const Drivers = () => {
             <option value="inactive">Off Duty</option>
           </select>
 
-          <button className="btn-export">
+          <button className="btn-export" onClick={() => exportDrivers(filteredDrivers)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Export
+            Export Excel
           </button>
         </div>
       </div>
@@ -250,14 +215,7 @@ const Drivers = () => {
               </div>
 
               <div className="driver-actions">
-                <button className="btn-primary">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                  View Details
-                </button>
-                <button className="btn-secondary">
+                <button className="btn-secondary" onClick={() => navigate(`/school/drivers/${driver.id}/edit`)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />

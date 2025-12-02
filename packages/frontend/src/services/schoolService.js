@@ -163,6 +163,16 @@ const schoolService = {
     return handleApiCall(() => axiosInstance.delete(`/students/${id}`));
   },
 
+  getStudents: async () => {
+    return handleApiCall(
+      () => axiosInstance.get("/students"),
+      {
+        success: true,
+        data: []
+      }
+    );
+  },
+
   // ==================== TÀI XẾ ====================
   getAllDrivers: async () => {
     return handleApiCall(
@@ -192,6 +202,16 @@ const schoolService = {
 
   getDriverById: async (id) => {
     return handleApiCall(() => axiosInstance.get(`/drivers/${id}`));
+  },
+
+  getDrivers: async () => {
+    return handleApiCall(
+      () => axiosInstance.get("/drivers"),
+      {
+        success: true,
+        data: []
+      }
+    );
   },
 
   // ==================== XE BUÝT ====================
@@ -235,6 +255,16 @@ const schoolService = {
 
   deleteBus: async (id) => {
     return handleApiCall(() => axiosInstance.delete(`/buses/${id}`));
+  },
+
+  getBuses: async () => {
+    return handleApiCall(
+      () => axiosInstance.get("/buses"),
+      {
+        success: true,
+        data: []
+      }
+    );
   },
 
   // ==================== TUYẾN ĐƯỜNG ====================
@@ -293,31 +323,78 @@ const schoolService = {
     );
   },
 
-  // ==================== TRACKING ====================
-  getAllBusLocations: async () => {
+  createSchedule: async (scheduleData) => {
+    return handleApiCall(() => axiosInstance.post("/schedules", scheduleData));
+  },
+
+  updateSchedule: async (id, scheduleData) => {
+    return handleApiCall(() => axiosInstance.put(`/schedules/${id}`, scheduleData));
+  },
+
+  // ==================== ROUTES ====================
+  createRoute: async (routeData) => {
+    return handleApiCall(() => axiosInstance.post("/routes", routeData));
+  },
+
+  updateRoute: async (id, routeData) => {
+    return handleApiCall(() => axiosInstance.put(`/routes/${id}`, routeData));
+  },
+
+  deleteRoute: async (id) => {
+    return handleApiCall(() => axiosInstance.delete(`/routes/${id}`));
+  },
+
+  getRouteById: async (id) => {
+    return handleApiCall(() => axiosInstance.get(`/routes/${id}`));
+  },
+
+  addStopToRoute: async (routeId, stopData) => {
+    return handleApiCall(() => axiosInstance.post(`/routes/${routeId}/stops`, stopData));
+  },
+
+  getRouteStops: async (routeId) => {
+    return handleApiCall(() => axiosInstance.get(`/routes/${routeId}/stops`));
+  },
+
+  assignStudentToSchedule: async (scheduleId, studentId) => {
+    return handleApiCall(() =>
+      axiosInstance.post(`/schedules/${scheduleId}/students/${studentId}`)
+    );
+  },
+
+  createDriver: async (driverData) => {
+    return handleApiCall(() => axiosInstance.post("/drivers", driverData));
+  },
+
+  updateDriver: async (id, driverData) => {
+    return handleApiCall(() => axiosInstance.put(`/drivers/${id}`, driverData));
+  },
+
+  deleteDriver: async (id) => {
+    return handleApiCall(() => axiosInstance.delete(`/drivers/${id}`));
+  },
+
+  // ==================== NOTIFICATIONS ====================
+  getAllNotifications: async () => {
     return handleApiCall(
-      () => axiosInstance.get("/tracking"),
-      // Fallback
+      () => axiosInstance.get("/notifications"),
       {
         success: true,
-        data: [
-          {
-            id: 1,
-            bienSo: "51A-12345",
-            viTri: { lat: 10.7769, lng: 106.7009 },
-            tocDo: 35,
-            trangThai: "Đang di chuyển"
-          },
-          {
-            id: 2,
-            bienSo: "51B-67890",
-            viTri: { lat: 10.7626, lng: 106.6822 },
-            tocDo: 0,
-            trangThai: "Đang dừng"
-          }
-        ]
+        data: []
       }
     );
+  },
+
+  sendNotification: async (notificationData) => {
+    return handleApiCall(() => axiosInstance.post("/notifications", notificationData));
+  },
+
+  updateNotification: async (id, notificationData) => {
+    return handleApiCall(() => axiosInstance.put(`/notifications/${id}`, notificationData));
+  },
+
+  deleteNotification: async (id) => {
+    return handleApiCall(() => axiosInstance.delete(`/notifications/${id}`));
   }
 };
 

@@ -322,8 +322,7 @@ exports.getDriverSchedules = async (req, res) => {
                             email: true,
                             avatar: true
                         }
-                    },
-                    xebuyt: true // Lấy thông tin xe buýt nếu có quan hệ
+                    }
                 }
             });
 
@@ -340,3 +339,76 @@ exports.getDriverSchedules = async (req, res) => {
             res.status(500).json({ success: false, message: 'Lỗi server khi lấy hồ sơ' });
         }
     };
+
+// Lấy lịch trình hôm nay của tài xế
+exports.getTodaySchedule = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Chưa xác thực người dùng' });
+        }
+
+        // Tìm tài xế dựa trên userId
+        const driver = await prisma.taixe.findUnique({
+            where: { userId: parseInt(userId) }
+        });
+
+        if (!driver) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy tài xế' });
+        }
+
+        // Lấy lịch trình hôm nay
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const schedules = await prisma.lichtrinh.findMany({
+            where: {
+                taiXeId: driver.taiXeId,
+                ngay: {
+                    gte: today,
+                    lt: tomorrow
+                }
+            },
+            include: {
+                xebuyt: true,
+                tuyenduong: {
+                    include: {
+                        tuyenduong_diemdung: {
+                            include: {
+                                diemdung: true
+                            },
+                            orderBy: {
+                                thuTu: 'asc'
+                            }
+                        }
+                    }
+                },
+                studentTrips: {
+                    include: {
+                        hocsinh: {
+                            select: {
+                                hocSinhId: true,
+                                hoTen: true,
+                                maHS: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                gioKhoiHanh: 'asc'
+            }
+        });
+
+        res.json({
+            success: true,
+            data: schedules
+        });
+    } catch (error) {
+        console.error('Get today schedule error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy lịch trình hôm nay' });
+    }
+};

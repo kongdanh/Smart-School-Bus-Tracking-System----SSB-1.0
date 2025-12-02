@@ -7,18 +7,47 @@ exports.getAllSchedules = async (req, res) => {
     try {
         const schedules = await prisma.lichtrinh.findMany({
             include: {
-                tuyenduong: true,
-                taixe: {
+                tuyenduong: {
                     include: {
-                        user: {
-                            select: {
-                                hoTen: true,
-                                soDienThoai: true
+                        tuyenduong_diemdung: {
+                            include: {
+                                diemdung: true
+                            },
+                            orderBy: {
+                                thuTu: 'asc'
                             }
                         }
                     }
                 },
-                xebuyt: true
+                taixe: {
+                    select: {
+                        taiXeId: true,
+                        hoTen: true,
+                        soDienThoai: true,
+                        trangThai: true
+                    }
+                },
+                xebuyt: {
+                    select: {
+                        xeBuytId: true,
+                        bienSoXe: true,
+                        soGhe: true,
+                        trangThai: true
+                    }
+                },
+                studentTrips: {
+                    include: {
+                        hocsinh: {
+                            select: {
+                                hocSinhId: true,
+                                hoTen: true,
+                                maHS: true,
+                                lop: true,
+                                avatar: true
+                            }
+                        }
+                    }
+                }
             },
             orderBy: [
                 { ngay: 'desc' },
@@ -26,9 +55,18 @@ exports.getAllSchedules = async (req, res) => {
             ]
         });
 
+        // Transform dữ liệu để dễ sử dụng ở frontend
+        const transformedSchedules = schedules.map(schedule => ({
+            ...schedule,
+            tuyenduong: schedule.tuyenduong ? {
+                ...schedule.tuyenduong,
+                diemDung: schedule.tuyenduong.tuyenduong_diemdung.map(td => td.diemdung)
+            } : null
+        }));
+
         res.json({
             success: true,
-            data: schedules
+            data: transformedSchedules
         });
     } catch (error) {
         console.error('Get all schedules error:', error);
@@ -136,6 +174,66 @@ exports.createSchedule = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Lỗi khi tạo lịch trình'
+        });
+    }
+};
+
+// Thêm học sinh vào lịch trình
+exports.assignStudentToSchedule = async (req, res) => {
+    try {
+        const { scheduleId, studentId } = req.params;
+
+        // Kiểm tra học sinh tồn tại
+        const student = await prisma.hocsinh.findUnique({
+            where: { hocSinhId: parseInt(studentId) }
+        });
+
+        if (!student) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy học sinh'
+            });
+        }
+
+        // Tạo bản ghi attendance cho học sinh
+        // Cần lấy taiXeId từ lịch trình
+        const schedule = await prisma.lichtrinh.findUnique({
+            where: { lichTrinhId: parseInt(scheduleId) }
+        });
+
+        if (!schedule) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy lịch trình'
+            });
+        }
+
+        // Tạo hoặc cập nhật attendance record
+        const attendance = await prisma.attendance.upsert({
+            where: {
+                lichTrinhId_hocSinhId: {
+                    lichTrinhId: parseInt(scheduleId),
+                    hocSinhId: parseInt(studentId)
+                }
+            },
+            update: {},
+            create: {
+                lichTrinhId: parseInt(scheduleId),
+                hocSinhId: parseInt(studentId),
+                taiXeId: schedule.taiXeId || 1  // Default taiXeId nếu không có
+            }
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Thêm học sinh vào lịch trình thành công',
+            data: attendance
+        });
+    } catch (error) {
+        console.error('Assign student to schedule error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi thêm học sinh vào lịch trình'
         });
     }
 };

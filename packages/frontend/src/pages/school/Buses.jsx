@@ -1,83 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import schoolService from '../../services/schoolService';
+import { exportBuses } from '../../utils/exportUtils';
+import { toast } from 'react-toastify';
 import '../../styles/school-styles/school-buses.css';
 
 const Buses = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [buses, setBuses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBusRoutes, setSelectedBusRoutes] = useState(null);
+  const [busRoutes, setBusRoutes] = useState([]);
 
-  // Mock data từ Prisma schema
-  const [buses] = useState([
-    {
-      xeBuytId: 1,
-      maXe: 'BUS001',
-      bienSo: '29B-12345',
-      sucChua: 45,
-      trangThai: 'active',
-      namSanXuat: 2020,
-      ngayKiemDinh: '2024-12-15',
-      currentStudents: 32,
-      driver: 'Nguyễn Văn An',
-      route: 'Route A',
-      lastMaintenance: '2024-10-01',
-      nextMaintenance: '2025-01-01'
-    },
-    {
-      xeBuytId: 2,
-      maXe: 'BUS002',
-      bienSo: '29B-67890',
-      sucChua: 40,
-      trangThai: 'maintenance',
-      namSanXuat: 2019,
-      ngayKiemDinh: '2024-11-20',
-      currentStudents: 0,
-      driver: '-',
-      route: '-',
-      lastMaintenance: '2024-11-15',
-      nextMaintenance: '2024-11-20'
-    },
-    {
-      xeBuytId: 3,
-      maXe: 'BUS003',
-      bienSo: '29B-11111',
-      sucChua: 50,
-      trangThai: 'active',
-      namSanXuat: 2021,
-      ngayKiemDinh: '2025-01-10',
-      currentStudents: 28,
-      driver: 'Trần Văn Bình',
-      route: 'Route B',
-      lastMaintenance: '2024-09-15',
-      nextMaintenance: '2024-12-15'
-    },
-    {
-      xeBuytId: 4,
-      maXe: 'BUS004',
-      bienSo: '29B-22222',
-      sucChua: 45,
-      trangThai: 'active',
-      namSanXuat: 2020,
-      ngayKiemDinh: '2024-12-30',
-      currentStudents: 35,
-      driver: 'Lê Thị Cẩm',
-      route: 'Route C',
-      lastMaintenance: '2024-10-10',
-      nextMaintenance: '2025-01-10'
-    },
-    {
-      xeBuytId: 5,
-      maXe: 'BUS005',
-      bienSo: '29B-33333',
-      sucChua: 40,
-      trangThai: 'inactive',
-      namSanXuat: 2018,
-      ngayKiemDinh: '2024-10-15',
-      currentStudents: 0,
-      driver: '-',
-      route: '-',
-      lastMaintenance: '2024-08-20',
-      nextMaintenance: '2024-11-20'
+  // Load dữ liệu từ API
+  useEffect(() => {
+    fetchBuses();
+  }, []);
+
+  const fetchBuses = async () => {
+    try {
+      setLoading(true);
+      const response = await schoolService.getAllBuses();
+
+      if (response.success) {
+        setBuses(response.data || []);
+      } else {
+        toast.warning("Không thể tải danh sách xe");
+      }
+    } catch (error) {
+      console.error('Error fetching buses:', error);
+      toast.error("Lỗi khi tải danh sách xe");
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  const handleTrackBus = async (bus) => {
+    try {
+      // Fetch schedules/routes for this bus
+      const schedulesRes = await schoolService.getAllSchedules?.() || { success: false, data: [] };
+      const allSchedules = schedulesRes.data || [];
+
+      // Filter schedules for this bus
+      const busSchedules = allSchedules.filter(s => s.xeBuytId === bus.id || s.bienSoXe === bus.bienSo);
+
+      if (busSchedules.length === 0) {
+        toast.info(`Xe ${bus.bienSo} không có lịch trình nào`);
+      } else {
+        toast.info(`Xe ${bus.bienSo} có ${busSchedules.length} lịch trình`);
+      }
+
+      setSelectedBusRoutes(bus.id);
+      setBusRoutes(busSchedules);
+    } catch (error) {
+      console.error('Error fetching bus routes:', error);
+      toast.error('Lỗi khi tải lịch trình');
+    }
+  };
 
   const filteredBuses = buses.filter(bus => {
     const matchesSearch = bus.maXe.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -109,6 +90,17 @@ const Buses = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="school-buses-container">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <div className="spinner"></div>
+          <p>Loading buses...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="school-buses-container">
       {/* Header */}
@@ -117,7 +109,7 @@ const Buses = () => {
           <h1>Buses Management</h1>
           <p className="header-subtitle">Manage school buses and maintenance schedules</p>
         </div>
-        <button className="btn-add-bus">
+        <button className="btn-add-bus" onClick={() => navigate('/school/buses/add')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
@@ -211,13 +203,13 @@ const Buses = () => {
             <option value="inactive">Inactive</option>
           </select>
 
-          <button className="btn-export">
+          <button className="btn-export" onClick={() => exportBuses(filteredBuses)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Export
+            Export Excel
           </button>
         </div>
       </div>
@@ -293,14 +285,14 @@ const Buses = () => {
               </div>
 
               <div className="bus-actions">
-                <button className="btn-primary">
+                <button className="btn-primary" onClick={() => handleTrackBus(bus)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
                   Track
                 </button>
-                <button className="btn-secondary">
+                <button className="btn-secondary" onClick={() => navigate(`/school/buses/${bus.id}/edit`)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />

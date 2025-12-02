@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { CheckCircle } from "lucide-react";
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import "../../styles/driver-styles/driver-routes.css";
 import tripService from "../../services/tripService";
-import attendanceService from "../../services/attendanceService";
 import locationService from "../../services/locationService";
 
 // --- CONFIG ICONS ---
@@ -191,9 +191,15 @@ export default function RoutesPage() {
 
         const loadStudents = async () => {
             try {
-                // Lấy danh sách học sinh theo lịch trình ID
-                const res = await attendanceService.getStudentsBySchedule(currentTrip.lichTrinhId);
-                const allStudents = res.data.students || [];
+                // Lấy danh sách học sinh từ currentTrip.studentTrips
+                const allStudents = currentTrip.studentTrips?.map(st => ({
+                    hocSinhId: st.hocsinh.hocSinhId,
+                    hoTen: st.hocsinh.hoTen,
+                    maHS: st.hocsinh.maHS,
+                    lop: st.hocsinh.lop,
+                    avatar: st.hocsinh.avatar,
+                    attendance: { loanDon: false, thoiGianDon: null }
+                })) || [];
 
                 // Chia học sinh giả lập theo từng trạm (vì DB chưa có bảng mapping chi tiết từng em xuống trạm nào)
                 const studentsPerStop = Math.ceil(allStudents.length / routeStops.length);
@@ -203,6 +209,7 @@ export default function RoutesPage() {
                 setStopStudents(students);
             } catch (err) {
                 console.error("Error loading students:", err);
+                setStopStudents([]);
             }
         };
 

@@ -1,4 +1,4 @@
-// backend/controller/authController.js
+// backend/controllers/authController.js
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -9,40 +9,35 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Hàm xác định role dựa trên userCode
 const getRoleFromUserCode = (userCode) => {
   if (!userCode) return null;
-  
+
+  // Hỗ trợ ADMIN
+  if (userCode.toUpperCase() === 'ADMIN') {
+    return 'school'; // Admin có quyền như school admin
+  }
+
   const prefix = userCode.substring(0, 2).toUpperCase();
-  
-  const roleMap = {
-    'QL': 'school',    // Quản lý xe buýt
-    'PH': 'parent',    // Phụ huynh
-    'TX': 'driver'     // Tài xế
-  };
-  
+  const roleMap = { 'QL': 'school', 'PH': 'parent', 'TX': 'driver' };
   return roleMap[prefix] || null;
 };
 
 // Hàm kiểm tra user có tồn tại trong bảng role tương ứng
-const checkUserRole = async (userId, role) => {
+const checkUserRole = async (userId, role, userCode) => {
   try {
+    // ADMIN có thể bypass kiểm tra role
+    if (userCode && userCode.toUpperCase() === 'ADMIN') {
+      return true;
+    }
+
     switch (role) {
       case 'school':
-        const qlxb = await prisma.quanlyxebuyt.findUnique({
-          where: { userId: userId }
-        });
+        const qlxb = await prisma.quanlyxebuyt.findUnique({ where: { userId } });
         return !!qlxb;
-        
       case 'parent':
-        const parent = await prisma.phuhuynh.findUnique({
-          where: { userId: userId }
-        });
+        const parent = await prisma.phuhuynh.findUnique({ where: { userId } });
         return !!parent;
-        
       case 'driver':
-        const driver = await prisma.taixe.findUnique({
-          where: { userId: userId }
-        });
+        const driver = await prisma.taixe.findUnique({ where: { userId } });
         return !!driver;
-        
       default:
         return false;
     }
@@ -51,12 +46,11 @@ const checkUserRole = async (userId, role) => {
   }
 };
 
-// API Đăng nhập
-exports.login = async (req, res) => {
+// ================ CONTROLLER FUNCTIONS ================
+
+const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -64,11 +58,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Tìm user trong bảng user
-    const user = await prisma.user.findFirst({
-      where: { email: email }
-    });
-    
+    const user = await prisma.user.findFirst({ where: { email } });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -76,24 +66,31 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ✅ KIỂM TRA MẬT KHẨU
+    // DEBUG: In ra giá trị matKhau
+    console.log('🔍 DEBUG - Email:', email);
+    console.log('🔍 DEBUG - matKhau from DB:', user.matKhau);
+    console.log('🔍 DEBUG - matKhau type:', typeof user.matKhau);
+    console.log('🔍 DEBUG - matKhau is null?', user.matKhau === null);
+    console.log('🔍 DEBUG - matKhau is undefined?', user.matKhau === undefined);
+
+    // Kiểm tra xem matKhau có tồn tại không
+    if (!user.matKhau) {
+      return res.status(401).json({
+        success: false,
+        message: 'Tài khoản chưa được thiết lập mật khẩu'
+      });
+    }
+
+    // Kiểm tra password - dùng matKhau thay vì password
     let isPasswordValid = false;
-    
-    if (user.password) {
-      // Nếu có trường password trong DB
-      // Kiểm tra xem password có được mã hóa không
-      if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
-        // Password đã được hash bằng bcrypt
-        isPasswordValid = await bcrypt.compare(password, user.password);
-      } else {
-        // Password chưa hash (plain text) - không khuyến khích
-        isPasswordValid = password === user.password;
-      }
+
+    // Kiểm tra xem password có được hash không (bắt đầu với $2a$ hoặc $2b$)
+    if (user.matKhau.startsWith('$2a$') || user.matKhau.startsWith('$2b$')) {
+      // Password đã hash - dùng bcrypt.compare
+      isPasswordValid = await bcrypt.compare(password, user.matKhau);
     } else {
-      // ⚠️ TẠM THỜI: Nếu chưa có trường password, chấp nhận bất kỳ password nào
-      // CHỈ DÙNG CHO DEVELOPMENT - XÓA KHI PRODUCTION
-      console.warn('⚠️ WARNING: User table does not have password field!');
-      isPasswordValid = true; // Tạm thời cho phép đăng nhập
+      // Password plain text - CHỈ DÙNG CHO DEVELOPMENT
+      isPasswordValid = user.matKhau === password;
     }
 
     if (!isPasswordValid) {
@@ -103,9 +100,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Xác định role từ userCode
     const role = getRoleFromUserCode(user.userCode);
-    
     if (!role) {
       return res.status(403).json({
         success: false,
@@ -113,9 +108,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Kiểm tra user có tồn tại trong bảng role tương ứng
-    const hasRole = await checkUserRole(user.userId, role);
-    
+    const hasRole = await checkUserRole(user.userId, role, user.userCode);
     if (!hasRole) {
       return res.status(403).json({
         success: false,
@@ -123,21 +116,13 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Tạo JWT token
     const token = jwt.sign(
-      { 
-        userId: user.userId,
-        email: user.email,
-        userCode: user.userCode,
-        role: role,
-        hoTen: user.hoTen
-      },
+      { userId: user.userId, email: user.email, role, hoTen: user.hoTen },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    // Trả về thông tin user và token
-    res.status(200).json({
+    res.json({
       success: true,
       message: 'Đăng nhập thành công',
       data: {
@@ -148,89 +133,12 @@ exports.login = async (req, res) => {
           userCode: user.userCode,
           hoTen: user.hoTen,
           soDienThoai: user.soDienThoai,
-          role: role
+          role
         }
       }
     });
-
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi server, vui lòng thử lại sau',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// API kiểm tra user hiện tại
-exports.getCurrentUser = async (req, res) => {
-  try {
-    const { userId, role } = req.user;
-
-    const user = await prisma.user.findUnique({
-      where: { userId: userId },
-      select: {
-        userId: true,
-        userCode: true,
-        hoTen: true,
-        soDienThoai: true,
-        email: true
-      }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy người dùng'
-      });
-    }
-
-    // Lấy thông tin chi tiết theo role
-    let roleData = null;
-    
-    switch (role) {
-      case 'school':
-        roleData = await prisma.quanlyxebuyt.findUnique({
-          where: { userId: userId }
-        });
-        break;
-        
-      case 'parent':
-        roleData = await prisma.phuhuynh.findUnique({
-          where: { userId: userId },
-          include: {
-            hocsinh: true
-          }
-        });
-        break;
-        
-      case 'driver':
-        roleData = await prisma.taixe.findUnique({
-          where: { userId: userId },
-          include: {
-            lichtrinh: {
-              include: {
-                tuyenduong: true,
-                xebuyt: true
-              }
-            }
-          }
-        });
-        break;
-    }
-
-    res.json({
-      success: true,
-      user: {
-        ...user,
-        role: role,
-        roleData: roleData
-      }
-    });
-    
-  } catch (error) {
-    console.error('Get current user error:', error);
     res.status(500).json({
       success: false,
       message: 'Lỗi server'
@@ -238,7 +146,47 @@ exports.getCurrentUser = async (req, res) => {
   }
 };
 
-// Đóng Prisma connection
-process.on('beforeExit', async () => {
-  await prisma.$disconnect();
-});
+const getCurrentUser = async (req, res) => {
+  try {
+    const { userId, role } = req.user;
+
+    const user = await prisma.user.findUnique({
+      where: { userId },
+      select: { userId: true, userCode: true, hoTen: true, soDienThoai: true, email: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    let roleData = null;
+    switch (role) {
+      case 'school':
+        roleData = await prisma.quanlyxebuyt.findUnique({ where: { userId } });
+        break;
+      case 'parent':
+        roleData = await prisma.phuhuynh.findUnique({ where: { userId }, include: { hocsinh: true } });
+        break;
+      case 'driver':
+        roleData = await prisma.taixe.findUnique({
+          where: { userId },
+          include: { lichtrinh: { include: { tuyenduong: true, xebuyt: true } } }
+        });
+        break;
+    }
+
+    res.json({
+      success: true,
+      user: { ...user, role, roleData }
+    });
+  } catch (error) {
+    console.error('Get current user error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};
+
+// ================ EXPORT ================
+module.exports = {
+  login,
+  getCurrentUser
+};

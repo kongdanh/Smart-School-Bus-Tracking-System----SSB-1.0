@@ -1,0 +1,196 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import schoolService from '../../services/schoolService';
+import { toast } from 'react-toastify';
+import '../../styles/school-styles/school-add-form.css';
+
+const EditStudent = () => {
+    const navigate = useNavigate();
+    const { id } = useParams();
+    const [loading, setLoading] = useState(false);
+    const [classes] = useState([
+        '9A', '9B', '9C', '9D', '9E',
+        '10A', '10B', '10C', '10D', '10E',
+        '11A', '11B', '11C', '11D', '11E',
+        '12A', '12B', '12C', '12D', '12E'
+    ]);
+    const [formData, setFormData] = useState({
+        maHS: '',
+        hoTen: '',
+        lop: '',
+        soDienThoaiPH: '',
+        phuHuynh: '',
+        diemDon: '',
+        diemTra: ''
+    });
+
+    useEffect(() => {
+        const fetchStudent = async () => {
+            try {
+                setLoading(true);
+                const response = await schoolService.getStudents();
+                if (response.success) {
+                    const student = response.data.find(s => s.id === parseInt(id));
+                    if (student) {
+                        setFormData({
+                            maHS: student.maHS || '',
+                            hoTen: student.hoTen || '',
+                            lop: student.lop || '',
+                            soDienThoaiPH: student.soDienThoaiPH || '',
+                            phuHuynh: student.phuHuynh || '',
+                            diemDon: student.diemDon || '',
+                            diemTra: student.diemTra || ''
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching student:', error);
+                toast.error('Lỗi khi tải dữ liệu học sinh');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (id) {
+            fetchStudent();
+        }
+    }, [id]);
+
+    const handleChange = (field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const handleSubmit = async () => {
+        if (!formData.maHS || !formData.hoTen || !formData.lop) {
+            toast.warning('Vui lòng nhập mã học sinh, tên và lớp');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const response = await schoolService.updateStudent(id, formData);
+            if (response.success) {
+                toast.success('Cập nhật học sinh thành công');
+                navigate('/school/students');
+            } else {
+                toast.error(response.message || 'Lỗi khi cập nhật học sinh');
+            }
+        } catch (error) {
+            console.error('Error updating student:', error);
+            toast.error('Lỗi khi cập nhật học sinh');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="add-form-container">
+            <div className="form-header">
+                <button className="btn-back" onClick={() => navigate('/school/students')}>
+                    ← Quay lại
+                </button>
+                <h1>Chỉnh Sửa Học Sinh</h1>
+            </div>
+
+            <div className="form-card">
+                <div className="form-section">
+                    <h2>Thông Tin Cơ Bản</h2>
+                    <div className="form-grid">
+                        <div className="form-group">
+                            <label>Mã Học Sinh *</label>
+                            <input
+                                type="text"
+                                placeholder="VD: HS001"
+                                value={formData.maHS}
+                                onChange={e => handleChange('maHS', e.target.value)}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Tên Học Sinh *</label>
+                            <input
+                                type="text"
+                                placeholder="VD: Nguyễn Văn A"
+                                value={formData.hoTen}
+                                onChange={e => handleChange('hoTen', e.target.value)}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Lớp *</label>
+                            <select
+                                value={formData.lop}
+                                onChange={e => handleChange('lop', e.target.value)}
+                            >
+                                <option value="">-- Chọn lớp --</option>
+                                {classes.map(cls => (
+                                    <option key={cls} value={cls}>{cls}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="form-section">
+                    <h2>Điểm Dừng</h2>
+                    <div className="form-grid">
+                        <div className="form-group">
+                            <label>Tên Phụ Huynh</label>
+                            <input
+                                type="text"
+                                placeholder="VD: Nguyễn Thị B"
+                                value={formData.phuHuynh}
+                                onChange={e => handleChange('phuHuynh', e.target.value)}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Số Điện Thoại</label>
+                            <input
+                                type="tel"
+                                placeholder="VD: 0901234567"
+                                value={formData.soDienThoaiPH}
+                                onChange={e => handleChange('soDienThoaiPH', e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="form-section">
+                    <h2>Điểm Dừng</h2>
+                    <div className="form-grid">
+                        <div className="form-group full-width">
+                            <label>Điểm Đón</label>
+                            <input
+                                type="text"
+                                placeholder="VD: Nhà bạn An"
+                                value={formData.diemDon}
+                                onChange={e => handleChange('diemDon', e.target.value)}
+                            />
+                        </div>
+                        <div className="form-group full-width">
+                            <label>Điểm Trả</label>
+                            <input
+                                type="text"
+                                placeholder="VD: Trường THPT ABC"
+                                value={formData.diemTra}
+                                onChange={e => handleChange('diemTra', e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="form-footer">
+                <button className="btn-cancel" onClick={() => navigate('/school/students')} disabled={loading}>
+                    Hủy
+                </button>
+                <button className="btn-submit" onClick={handleSubmit} disabled={loading}>
+                    {loading ? 'Đang xử lý...' : 'Cập Nhật Học Sinh'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export default EditStudent;

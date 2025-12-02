@@ -184,13 +184,35 @@ exports.getRouteStops = async (req, res) => {
 exports.addStopToRoute = async (req, res) => {
     try {
         const { routeId } = req.params;
-        const { diemDungId, thuTu } = req.body;
+        const { diemDungId, tenDiemDung, diaChi, vido, kinhdo, thuTu } = req.body;
+
+        let stopId = diemDungId;
+
+        // Nếu không có diemDungId, tạo điểm dừng mới
+        if (!diemDungId && tenDiemDung) {
+            const newStop = await prisma.diemdung.create({
+                data: {
+                    tenDiemDung,
+                    diaChi: diaChi || null,
+                    vido: vido ? parseFloat(vido) : null,
+                    kinhdo: kinhdo ? parseFloat(kinhdo) : null
+                }
+            });
+            stopId = newStop.diemDungId;
+        }
+
+        if (!stopId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cần cung cấp diemDungId hoặc thông tin điểm dừng mới'
+            });
+        }
 
         const routeStop = await prisma.tuyenduong_diemdung.create({
             data: {
                 tuyenDuongId: parseInt(routeId),
-                diemDungId: parseInt(diemDungId),
-                thuTu: parseInt(thuTu)
+                diemDungId: parseInt(stopId),
+                thuTu: parseInt(thuTu) || 1
             },
             include: {
                 diemdung: true
