@@ -5,9 +5,9 @@ import '../../styles/school-styles/school-add-route.css';
 
 // Danh sách phường/xã TP.HCM
 const DISTRICTS_HCM = [
-    'Quận 1', 'Quận 2', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7', 
+    'Quận 1', 'Quận 2', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7',
     'Quận 8', 'Quận 9', 'Quận 10', 'Quận 11', 'Quận 12',
-    'Quận Bình Tân', 'Quận Bình Thạnh', 'Quận Gò Vấp', 'Quận Phú Nhuận', 
+    'Quận Bình Tân', 'Quận Bình Thạnh', 'Quận Gò Vấp', 'Quận Phú Nhuận',
     'Quận Tân Bình', 'Quận Tân Phú', 'Quận Thủ Đức',
     'Huyện Bình Chánh', 'Huyện Cần Giuộc', 'Huyện Cần Giờ', 'Huyện Châu Thành',
     'Huyện Hóc Môn', 'Huyện Nhà Bè', 'Huyện Củ Chi'
@@ -99,7 +99,7 @@ const AddRoute = () => {
         // Geocode the address
         toast.loading('Đang xử lý toạ độ...');
         const coords = await geocodeAddress(newStop.diaChi, newStop.phuongXa);
-        
+
         if (!coords) {
             toast.error('Không thể xác định toạ độ. Vui lòng kiểm tra địa chỉ');
             return;

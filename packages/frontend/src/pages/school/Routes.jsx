@@ -27,14 +27,21 @@ export default function SchoolRoutes() {
     fetchSchedules();
   }, []);
 
+  // Chọn lịch trình đầu tiên khi load xong
+  useEffect(() => {
+    if (!loading && schedules.length > 0 && !selectedRoute) {
+      setSelectedRoute(schedules[0]);
+    }
+  }, [loading, schedules, selectedRoute]);
+
   // Fit map bounds when route changes
   useEffect(() => {
     if (selectedRoute && selectedRoute.stops && selectedRoute.stops.length > 0 && mapRef.current) {
-      const validStops = selectedRoute.stops.filter(stop => 
-        stop.vido && stop.kinhdo && 
+      const validStops = selectedRoute.stops.filter(stop =>
+        stop.vido && stop.kinhdo &&
         !isNaN(parseFloat(stop.vido)) && !isNaN(parseFloat(stop.kinhdo))
       );
-      
+
       if (validStops.length > 0) {
         const bounds = L.latLngBounds(
           validStops.map(stop => [parseFloat(stop.vido), parseFloat(stop.kinhdo)])
@@ -179,14 +186,14 @@ export default function SchoolRoutes() {
 
         {/* Right Side - Map */}
         <div className="routes-map-section">
-          {selectedRoute && selectedRoute.stops && selectedRoute.stops.length > 0 ? (
+          {selectedRoute ? (
             <>
               <div className="map-header">
                 <h3>Tuyến Đường Lịch Trình #{selectedRoute.lichTrinhId || selectedRoute.id}</h3>
               </div>
               <MapContainer
                 ref={mapRef}
-                center={[10.8231, 106.6297]} // Default to HCMC center
+                center={[10.8231, 106.6297]}
                 zoom={12}
                 className="route-map"
               >
@@ -195,53 +202,77 @@ export default function SchoolRoutes() {
                   attribution='&copy; OpenStreetMap contributors'
                 />
 
-                {/* Draw polyline through stops */}
-                {selectedRoute.stops
-                  .filter(stop => stop.vido && stop.kinhdo)
-                  .length > 1 && (
-                  <Polyline
-                    positions={selectedRoute.stops
-                      .filter(stop => stop.vido && stop.kinhdo)
-                      .map(stop => [parseFloat(stop.vido), parseFloat(stop.kinhdo)])}
-                    color="#e94560"
-                    weight={3}
-                    opacity={0.8}
-                  />
-                )}
+                {/* Draw polyline through stops with coordinates */}
+                {selectedRoute.stops &&
+                  selectedRoute.stops.filter(stop => stop.vido && stop.kinhdo).length > 1 && (
+                    <Polyline
+                      positions={selectedRoute.stops
+                        .filter(stop => stop.vido && stop.kinhdo)
+                        .map(stop => [parseFloat(stop.vido), parseFloat(stop.kinhdo)])}
+                      color="#e94560"
+                      weight={3}
+                      opacity={0.8}
+                    />
+                  )}
 
-                {/* Markers for each stop */}
-                {selectedRoute.stops.map((stop, idx) => {
-                  if (!stop.vido || !stop.kinhdo) return null;
-                  const lat = parseFloat(stop.vido);
-                  const lng = parseFloat(stop.kinhdo);
-                  if (isNaN(lat) || isNaN(lng)) return null;
+                {/* Markers for all stops (with or without coordinates) */}
+                {selectedRoute.stops &&
+                  selectedRoute.stops.map((stop, idx) => {
+                    // Nếu có toạ độ thì hiển thị marker trên map
+                    if (stop.vido && stop.kinhdo) {
+                      const lat = parseFloat(stop.vido);
+                      const lng = parseFloat(stop.kinhdo);
+                      if (!isNaN(lat) && !isNaN(lng)) {
+                        return (
+                          <Marker key={idx} position={[lat, lng]}>
+                            <Popup>
+                              <div style={{ fontSize: '12px' }}>
+                                <strong>#{idx + 1}. {stop.tenDiemDung}</strong>
+                                <p style={{ margin: '4px 0', color: '#666' }}>{stop.diaChi}</p>
+                              </div>
+                            </Popup>
+                          </Marker>
+                        );
+                      }
+                    }
+                    return null;
+                  })}
 
-                  return (
-                    <Marker key={idx} position={[lat, lng]}>
-                      <Popup>
-                        <div style={{ fontSize: '12px' }}>
-                          <strong>#{idx + 1}. {stop.tenDiemDung}</strong>
-                          <p style={{ margin: '4px 0', color: '#666' }}>{stop.diaChi}</p>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  );
-                })}
+                {/* Display stops info in a sidebar inside map if no coordinates */}
+                {selectedRoute.stops &&
+                  selectedRoute.stops.filter(s => !s.vido || !s.kinhdo).length > 0 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: '10px',
+                        left: '10px',
+                        background: 'rgba(0,0,0,0.8)',
+                        color: '#fff',
+                        padding: '10px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        maxWidth: '200px',
+                        zIndex: 400,
+                      }}
+                    >
+                      <strong style={{ display: 'block', marginBottom: '8px' }}>
+                        ⚠️ Điểm dừng chưa có toạ độ:
+                      </strong>
+                      {selectedRoute.stops
+                        .filter(s => !s.vido || !s.kinhdo)
+                        .map((stop, idx) => (
+                          <div key={idx} style={{ marginBottom: '4px' }}>
+                            #{idx + 1}. {stop.tenDiemDung}
+                          </div>
+                        ))}
+                    </div>
+                  )}
               </MapContainer>
             </>
-          ) : selectedRoute ? (
-            <div className="map-empty">
-              <div className="empty-message">
-                <p>Lịch trình này không có thông tin toạ độ</p>
-                <p style={{ fontSize: '12px', color: '#999' }}>
-                  Vui lòng kiểm tra địa chỉ các điểm dừng
-                </p>
-              </div>
-            </div>
           ) : (
             <div className="map-empty">
               <div className="empty-message">
-                <p>👈 Chọn một lịch trình để xem bản đồ</p>
+                <p>Đang tải dữ liệu lịch trình...</p>
               </div>
             </div>
           )}

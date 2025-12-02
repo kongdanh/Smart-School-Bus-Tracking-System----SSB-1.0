@@ -9,8 +9,13 @@ exports.getAllSchedules = async (req, res) => {
             include: {
                 tuyenduong: {
                     include: {
-                        diemDung: {
-                            orderBy: { thuTu: 'asc' }
+                        tuyenduong_diemdung: {
+                            include: {
+                                diemdung: true
+                            },
+                            orderBy: {
+                                thuTu: 'asc'
+                            }
                         }
                     }
                 },
@@ -50,9 +55,18 @@ exports.getAllSchedules = async (req, res) => {
             ]
         });
 
+        // Transform dữ liệu để dễ sử dụng ở frontend
+        const transformedSchedules = schedules.map(schedule => ({
+            ...schedule,
+            tuyenduong: schedule.tuyenduong ? {
+                ...schedule.tuyenduong,
+                diemDung: schedule.tuyenduong.tuyenduong_diemdung.map(td => td.diemdung)
+            } : null
+        }));
+
         res.json({
             success: true,
-            data: schedules
+            data: transformedSchedules
         });
     } catch (error) {
         console.error('Get all schedules error:', error);
