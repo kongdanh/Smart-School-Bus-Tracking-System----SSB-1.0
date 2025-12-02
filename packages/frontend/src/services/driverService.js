@@ -115,15 +115,15 @@ const driverService = {
         try {
             // Lấy profile của tài xế đang đăng nhập
             const profileRes = await axiosInstance.get('/profile');
-            if (!profileRes.success) {
+            if (!profileRes.data || !profileRes.data.success) {
                 throw new Error('Không thể lấy thông tin tài xế');
             }
 
-            const driver = profileRes.data;
+            const driver = profileRes.data.data;
 
             // Lấy lịch trình hôm nay của tài xế đang đăng nhập
             const scheduleRes = await axiosInstance.get('/schedule/today');
-            const todaySchedules = scheduleRes.data || [];
+            const todaySchedules = scheduleRes.data.data || [];
 
             // Tìm lịch trình đang chạy (có status = 'in_progress')
             const currentTrip = todaySchedules.find(s => s.trangThai === 'in_progress');
@@ -132,8 +132,8 @@ const driverService = {
             const completedToday = todaySchedules.filter(s => s.trangThai === 'completed').length;
             const totalTrips = todaySchedules.length;
 
-            // Lấy số học sinh từ studenttrip array
-            const studentCount = currentTrip?.studenttrip?.length || 0;
+            // Lấy số học sinh từ studentTrips array
+            const studentCount = currentTrip?.studentTrips?.length || 0;
 
             return {
                 success: true,

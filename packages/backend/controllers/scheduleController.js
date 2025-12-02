@@ -7,18 +7,42 @@ exports.getAllSchedules = async (req, res) => {
     try {
         const schedules = await prisma.lichtrinh.findMany({
             include: {
-                tuyenduong: true,
-                taixe: {
+                tuyenduong: {
                     include: {
-                        user: {
-                            select: {
-                                hoTen: true,
-                                soDienThoai: true
-                            }
+                        diemDung: {
+                            orderBy: { thuTu: 'asc' }
                         }
                     }
                 },
-                xebuyt: true
+                taixe: {
+                    select: {
+                        taiXeId: true,
+                        hoTen: true,
+                        soDienThoai: true,
+                        trangThai: true
+                    }
+                },
+                xebuyt: {
+                    select: {
+                        xeBuytId: true,
+                        bienSoXe: true,
+                        soGhe: true,
+                        trangThai: true
+                    }
+                },
+                studentTrips: {
+                    include: {
+                        hocsinh: {
+                            select: {
+                                hocSinhId: true,
+                                hoTen: true,
+                                maHS: true,
+                                lop: true,
+                                avatar: true
+                            }
+                        }
+                    }
+                }
             },
             orderBy: [
                 { ngay: 'desc' },

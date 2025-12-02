@@ -3,6 +3,37 @@ import schoolService from '../../services/schoolService';
 import { toast } from 'react-toastify';
 import '../../styles/school-styles/school-add-route.css';
 
+// Danh sách phường/xã TP.HCM
+const DISTRICTS_HCM = [
+    'Quận 1', 'Quận 2', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7', 
+    'Quận 8', 'Quận 9', 'Quận 10', 'Quận 11', 'Quận 12',
+    'Quận Bình Tân', 'Quận Bình Thạnh', 'Quận Gò Vấp', 'Quận Phú Nhuận', 
+    'Quận Tân Bình', 'Quận Tân Phú', 'Quận Thủ Đức',
+    'Huyện Bình Chánh', 'Huyện Cần Giuộc', 'Huyện Cần Giờ', 'Huyện Châu Thành',
+    'Huyện Hóc Môn', 'Huyện Nhà Bè', 'Huyện Củ Chi'
+];
+
+// Hàm geocode địa chỉ (sử dụng OpenStreetMap Nominatim)
+const geocodeAddress = async (address, district) => {
+    try {
+        const fullAddress = `${address}, ${district}, TP. Hồ Chí Minh, Việt Nam`;
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullAddress)}&format=json&limit=1`
+        );
+        const data = await response.json();
+        if (data.length > 0) {
+            return {
+                vido: parseFloat(data[0].lat),
+                kinhdo: parseFloat(data[0].lon)
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Geocoding error:', error);
+        return null;
+    }
+};
+
 const AddRoute = () => {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
@@ -52,9 +83,9 @@ const AddRoute = () => {
         }
     };
 
-    const handleAddStop = () => {
-        if (!newStop.tenDiemDung || !newStop.diaChi) {
-            toast.warning('Vui lòng nhập tên và địa chỉ điểm dừng');
+    const handleAddStop = async () => {
+        if (!newStop.tenDiemDung || !newStop.diaChi || !newStop.phuongXa) {
+            toast.warning('Vui lòng nhập tên, địa chỉ và chọn phường/xã');
             return;
         }
 
@@ -65,11 +96,20 @@ const AddRoute = () => {
             return;
         }
 
+        // Geocode the address
+        toast.loading('Đang xử lý toạ độ...');
+        const coords = await geocodeAddress(newStop.diaChi, newStop.phuongXa);
+        
+        if (!coords) {
+            toast.error('Không thể xác định toạ độ. Vui lòng kiểm tra địa chỉ');
+            return;
+        }
+
         const stop = {
             tenDiemDung: newStop.tenDiemDung,
             diaChi: newStop.diaChi,
-            vido: newStop.vido,
-            kinhdo: newStop.kinhdo,
+            vido: coords.vido,
+            kinhdo: coords.kinhdo,
             id: Date.now(),
             thuTu: formData.stops.length + 1
         };
@@ -299,22 +339,18 @@ const AddRoute = () => {
                             <div className="stop-input-group">
                                 <div className="form-grid">
                                     <div className="form-group full-width">
-                                        <label>Bước 1: Chọn Phường/Xã</label>
+                                        <label>Bước 1: Chọn Phường/Xã *</label>
                                         <select
                                             value={newStop.phuongXa}
                                             onChange={e => setNewStop(prev => ({ ...prev, phuongXa: e.target.value }))}
                                             className="student-select"
                                         >
                                             <option value="">-- Chọn Phường/Xã --</option>
-                                            {Array.from(new Set(students
-                                                .filter(s => s.phuongXa || s.quan)
-                                                .map(s => s.phuongXa || s.quan)))
-                                                .map(area => (
-                                                    <option key={area} value={area}>
-                                                        {area}
-                                                    </option>
-                                                ))
-                                            }
+                                            {DISTRICTS_HCM.map(district => (
+                                                <option key={district} value={district}>
+                                                    {district}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div className="form-group full-width">
@@ -345,10 +381,10 @@ const AddRoute = () => {
                                         />
                                     </div>
                                     <div className="form-group full-width">
-                                        <label>Địa Chỉ Chi Tiết *</label>
+                                        <label>Địa Chỉ Chi Tiết * (số nhà, đường phố)</label>
                                         <input
                                             type="text"
-                                            placeholder="VD: 123 Lê Lợi, Quận 1, TP.HCM"
+                                            placeholder="VD: 123 Lê Lợi"
                                             value={newStop.diaChi}
                                             onChange={e => setNewStop(prev => ({ ...prev, diaChi: e.target.value }))}
                                         />

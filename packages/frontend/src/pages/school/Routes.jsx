@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import schoolService from "../../services/schoolService";
@@ -17,6 +17,7 @@ L.Icon.Default.mergeOptions({
 
 export default function SchoolRoutes() {
   const navigate = useNavigate();
+  const mapRef = useRef(null);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,23 @@ export default function SchoolRoutes() {
     fetchSchedules();
   }, []);
 
+  // Fit map bounds when route changes
+  useEffect(() => {
+    if (selectedRoute && selectedRoute.stops && selectedRoute.stops.length > 0 && mapRef.current) {
+      const validStops = selectedRoute.stops.filter(stop => 
+        stop.vido && stop.kinhdo && 
+        !isNaN(parseFloat(stop.vido)) && !isNaN(parseFloat(stop.kinhdo))
+      );
+      
+      if (validStops.length > 0) {
+        const bounds = L.latLngBounds(
+          validStops.map(stop => [parseFloat(stop.vido), parseFloat(stop.kinhdo)])
+        );
+        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      }
+    }
+  }, [selectedRoute]);
+
   const fetchSchedules = async () => {
     try {
       setLoading(true);
@@ -34,14 +52,19 @@ export default function SchoolRoutes() {
       if (response?.success) {
         const schedulesList = response.data || [];
 
-        // Map schedules to route format - chỉ lưu cần thiết
+        // Map schedules to route format
         const routes = schedulesList.map((schedule, idx) => ({
           id: schedule.lichTrinhId || schedule.id || `schedule-${idx}`,
-          name: `Lịch trình ${schedule.lichTrinhId || schedule.id || idx + 1}`,
-          status: 'stopped',
-          statusText: 'Dừng',
-          stops: schedule.stops || [],
-          students: schedule.students || [],
+          lichTrinhId: schedule.lichTrinhId,
+          name: `Lịch trình ${schedule.lichTrinhId || idx + 1}`,
+          status: schedule.trangThai || 'stopped',
+          statusText: schedule.trangThai === 'active' ? 'Đang hoạt động' : 'Dừng',
+          stops: schedule.tuyenduong?.diemDung || [],
+          students: schedule.studentTrips?.map(st => st.hocsinh) || [],
+          gioKhoiHanh: schedule.gioKhoiHanh,
+          gioKetThuc: schedule.gioKetThuc,
+          xeBuyt: schedule.xebuyt,
+          taiXe: schedule.taixe,
           scheduleData: schedule
         }));
 
@@ -63,8 +86,7 @@ export default function SchoolRoutes() {
   };
 
   const filteredRoutes = schedules.filter(route =>
-    route.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    route.description.toLowerCase().includes(searchTerm.toLowerCase())
+    route.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -72,7 +94,7 @@ export default function SchoolRoutes() {
       <div className="school-routes-container">
         <div className="loading-state">
           <div className="spinner"></div>
-          <h3>Loading routes...</h3>
+          <h3>Đang tải lịch trình...</h3>
         </div>
       </div>
     );
@@ -83,8 +105,8 @@ export default function SchoolRoutes() {
       {/* Header */}
       <div className="routes-header">
         <div className="header-content">
-          <h1>Route Management</h1>
-          <p className="routes-subtitle">View and manage bus routes with real-time data</p>
+          <h1>Quản Lý Lịch Trình</h1>
+          <p className="routes-subtitle">Xem và quản lý lịch trình với bản đồ thời gian thực</p>
         </div>
         <div className="header-actions">
           <button className="btn-add" onClick={() => navigate('/school/add-route')}>
@@ -92,7 +114,7 @@ export default function SchoolRoutes() {
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Add Route
+            Tạo Tuyến Mới
           </button>
         </div>
       </div>
@@ -106,84 +128,121 @@ export default function SchoolRoutes() {
           </svg>
           <input
             type="text"
-            placeholder="Search routes..."
+            placeholder="Tìm kiếm lịch trình..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content Layout: Sidebar + Map */}
       <div className="routes-content">
-        {/* Routes List - Sidebar trái: chỉ hiển thị lichTrinhId và trạng thái */}
-        <div className="routes-list">
-          <h3>Lịch Trình ({filteredRoutes.length})</h3>
+        {/* Left Sidebar - Schedule List */}
+        <div className="routes-sidebar">
+          <div className="sidebar-header">
+            <h3>Danh Sách Lịch Trình ({filteredRoutes.length})</h3>
+          </div>
           <div className="route-items">
-            {filteredRoutes.map((route) => (
-              <div
-                key={route.id}
-                className={`route-item ${route.status} ${selectedRoute?.id === route.id ? 'selected' : ''}`}
-                onClick={() => handleViewSchedule(route)}
-                style={{ cursor: 'pointer', padding: '12px', borderRadius: '8px', marginBottom: '8px', backgroundColor: selectedRoute?.id === route.id ? '#0f3460' : '#2a2a3e', border: '1px solid #444' }}
-              >
-                <div className="route-item-header">
-                  <div className="route-info">
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600' }}>#{route.id}</h4>
-                    <p style={{ margin: '0', fontSize: '12px', color: '#aaa' }}>
-                      <span className={`status-badge ${route.status}`} style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', backgroundColor: route.status === 'stopped' ? '#f59e0b' : '#10b981', fontSize: '11px' }}>
-                        <span className="status-dot" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'white', marginRight: '4px' }}></span>
-                        {route.statusText}
-                      </span>
-                    </p>
+            {filteredRoutes.length > 0 ? (
+              filteredRoutes.map((route) => (
+                <div
+                  key={route.id}
+                  className={`route-item ${selectedRoute?.id === route.id ? 'active' : ''}`}
+                  onClick={() => handleViewSchedule(route)}
+                >
+                  <div className="route-item-content">
+                    <div className="route-item-title">#{route.lichTrinhId || route.id}</div>
+                    <div className="route-item-time">
+                      {route.gioKhoiHanh} - {route.gioKetThuc}
+                    </div>
+                    <div className="route-item-bus">
+                      🚌 {route.xeBuyt?.bienSoXe || 'N/A'}
+                    </div>
+                    <div className="route-item-driver">
+                      👤 {route.taiXe?.hoTen || 'N/A'}
+                    </div>
+                    <div className="route-item-stops">
+                      📍 {route.stops?.length || 0} điểm dừng
+                    </div>
+                    <div className={`route-item-status ${route.status}`}>
+                      <span className="status-dot"></span>
+                      {route.statusText}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="no-routes">Không có lịch trình nào</div>
+            )}
           </div>
         </div>
 
-        {/* Map - Hiển thị chi tiết của schedule được chọn */}
-        <div className="route-map-container">
-          <div className="map-header">
-            <h3>Chi Tiết Lịch Trình</h3>
-          </div>
+        {/* Right Side - Map */}
+        <div className="routes-map-section">
+          {selectedRoute && selectedRoute.stops && selectedRoute.stops.length > 0 ? (
+            <>
+              <div className="map-header">
+                <h3>Tuyến Đường Lịch Trình #{selectedRoute.lichTrinhId || selectedRoute.id}</h3>
+              </div>
+              <MapContainer
+                ref={mapRef}
+                center={[10.8231, 106.6297]} // Default to HCMC center
+                zoom={12}
+                className="route-map"
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; OpenStreetMap contributors'
+                />
 
-          {selectedRoute ? (
-            <div className="schedule-details-view" style={{ padding: '16px', backgroundColor: '#1a1a2e', borderRadius: '8px', overflow: 'auto', maxHeight: '600px' }}>
-              <div className="detail-section" style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #333' }}>
-                <h3 style={{ marginTop: 0, marginBottom: '8px', color: '#e94560' }}>Thông Tin Cơ Bản</h3>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Mã Lịch Trình:</strong> {selectedRoute.id}</p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Trạng Thái:</strong>
-                  <span style={{ marginLeft: '8px', padding: '2px 8px', borderRadius: '4px', backgroundColor: selectedRoute.status === 'stopped' ? '#f59e0b' : '#10b981', color: 'white', fontSize: '12px' }}>
-                    {selectedRoute.statusText}
-                  </span>
+                {/* Draw polyline through stops */}
+                {selectedRoute.stops
+                  .filter(stop => stop.vido && stop.kinhdo)
+                  .length > 1 && (
+                  <Polyline
+                    positions={selectedRoute.stops
+                      .filter(stop => stop.vido && stop.kinhdo)
+                      .map(stop => [parseFloat(stop.vido), parseFloat(stop.kinhdo)])}
+                    color="#e94560"
+                    weight={3}
+                    opacity={0.8}
+                  />
+                )}
+
+                {/* Markers for each stop */}
+                {selectedRoute.stops.map((stop, idx) => {
+                  if (!stop.vido || !stop.kinhdo) return null;
+                  const lat = parseFloat(stop.vido);
+                  const lng = parseFloat(stop.kinhdo);
+                  if (isNaN(lat) || isNaN(lng)) return null;
+
+                  return (
+                    <Marker key={idx} position={[lat, lng]}>
+                      <Popup>
+                        <div style={{ fontSize: '12px' }}>
+                          <strong>#{idx + 1}. {stop.tenDiemDung}</strong>
+                          <p style={{ margin: '4px 0', color: '#666' }}>{stop.diaChi}</p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              </MapContainer>
+            </>
+          ) : selectedRoute ? (
+            <div className="map-empty">
+              <div className="empty-message">
+                <p>Lịch trình này không có thông tin toạ độ</p>
+                <p style={{ fontSize: '12px', color: '#999' }}>
+                  Vui lòng kiểm tra địa chỉ các điểm dừng
                 </p>
               </div>
-
-              {selectedRoute.stops && selectedRoute.stops.length > 0 && (
-                <div className="detail-section" style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #333' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '12px', color: '#e94560' }}>Các Điểm Dừng ({selectedRoute.stops.length})</h3>
-                  <ul className="stops-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {selectedRoute.stops.map((stop, idx) => (
-                      <li key={idx} style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#0f3460', borderRadius: '6px', fontSize: '13px' }}>
-                        <strong style={{ color: '#e94560' }}>#{idx + 1}. {stop.tenDiemDung || `Điểm dừng ${idx + 1}`}</strong>
-                        <p style={{ margin: '4px 0 0 0', color: '#aaa' }}>{stop.diaChi}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {selectedRoute.students && selectedRoute.students.length > 0 && (
-                <div className="detail-section">
-                  <h3 style={{ marginTop: 0, marginBottom: '12px', color: '#e94560' }}>Học Sinh ({selectedRoute.students.length})</h3>
-                  <p style={{ fontSize: '12px', color: '#aaa', margin: 0 }}>Có {selectedRoute.students.length} học sinh trên lịch trình này</p>
-                </div>
-              )}
             </div>
           ) : (
-            <div className="map-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px', color: '#666' }}>
-              <p>Chọn một lịch trình để xem chi tiết</p>
+            <div className="map-empty">
+              <div className="empty-message">
+                <p>👈 Chọn một lịch trình để xem bản đồ</p>
+              </div>
             </div>
           )}
         </div>
