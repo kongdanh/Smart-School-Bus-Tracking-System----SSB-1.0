@@ -94,12 +94,20 @@ const authorize = (...roles) => {
     // ta sẽ kiểm tra dựa trên việc user có tồn tại trong các bảng con không.
 
     let userRole = 'user'; // Mặc định
-    if (req.user.quanlyxebuyt) userRole = 'admin'; // hoặc 'manager'
+    if (req.user.quanlyxebuyt) userRole = 'school'; // School manager
     else if (req.user.taixe) userRole = 'driver';
     else if (req.user.phuhuynh) userRole = 'parent';
 
     // Nếu bạn đã lưu role trong token lúc login, có thể dùng: const roleToCheck = req.user.role || userRole;
     const roleToCheck = req.user.role || userRole;
+
+    console.log('=== Authorization Check ===');
+    console.log('User:', req.user.email);
+    console.log('Required roles:', roles);
+    console.log('User role:', roleToCheck);
+    console.log('Has quanlyxebuyt:', !!req.user.quanlyxebuyt);
+    console.log('Has taixe:', !!req.user.taixe);
+    console.log('Has phuhuynh:', !!req.user.phuhuynh);
 
     if (!roles.includes(roleToCheck)) {
       return res.status(403).json({

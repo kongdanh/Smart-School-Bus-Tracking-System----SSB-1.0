@@ -32,7 +32,6 @@ import SchoolBuses from "./pages/school/Buses";
 import SchoolRoutes from "./pages/school/Routes";
 import SchoolTracking from "./pages/school/Tracking";
 import SchoolNotifications from "./pages/school/Notifications";
-import SchoolCreateSchedule from "./pages/school/CreateSchedule";
 import SchoolAddRoute from "./pages/school/AddRoute";
 import SchoolDriverDetail from "./pages/school/DriverDetail";
 import AddStudent from "./pages/school/AddStudent";
@@ -238,7 +237,6 @@ function App() {
             <Route path="add-route" element={<SchoolAddRoute />} />
             <Route path="tracking" element={<SchoolTracking />} />
             <Route path="notifications" element={<SchoolNotifications />} />
-            <Route path="create-schedule" element={<SchoolCreateSchedule />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 

@@ -50,7 +50,7 @@ const AddBus = () => {
     return (
         <div className="add-form-container">
             <div className="form-header">
-                <button className="btn-back" onClick={() => navigate('/school/buses')}>
+                <button className="btn btn-outline" onClick={() => navigate('/school/buses')}>
                     ← Quay lại
                 </button>
                 <h1>Thêm Xe Bus Mới</h1>
@@ -141,10 +141,10 @@ const AddBus = () => {
             </div>
 
             <div className="form-footer">
-                <button className="btn-cancel" onClick={() => navigate('/school/buses')} disabled={loading}>
+                <button className="btn btn-secondary" onClick={() => navigate('/school/buses')} disabled={loading}>
                     Hủy
                 </button>
-                <button className="btn-submit" onClick={handleSubmit} disabled={loading}>
+                <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
                     {loading ? 'Đang xử lý...' : 'Thêm Xe Bus'}
                 </button>
             </div>

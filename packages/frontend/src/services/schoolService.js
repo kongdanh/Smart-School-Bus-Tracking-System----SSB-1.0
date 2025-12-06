@@ -356,6 +356,10 @@ const schoolService = {
     return handleApiCall(() => axiosInstance.get(`/routes/${routeId}/stops`));
   },
 
+  getAllStops: async () => {
+    return handleApiCall(() => axiosInstance.get("/stops"));
+  },
+
   assignStudentToSchedule: async (scheduleId, studentId) => {
     return handleApiCall(() =>
       axiosInstance.post(`/schedules/${scheduleId}/students/${studentId}`)

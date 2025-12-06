@@ -47,32 +47,12 @@ const DriverDashboard = () => {
     }
   };
 
-  const handleCheckIn = async () => {
-    try {
-      const response = await driverService.checkIn();
-      if (response.success) {
-        setCheckedIn(true);
-        toast.success('Checked in successfully!');
-        fetchDashboardData();
-      }
-    } catch (error) {
-      toast.error('Failed to check in');
-    }
+  const handleCheckIn = () => {
+    navigate('/driver/check-in-out');
   };
 
-  const handleCheckOut = async () => {
-    if (window.confirm('Are you sure you want to check out?')) {
-      try {
-        const response = await driverService.checkOut();
-        if (response.success) {
-          setCheckedIn(false);
-          toast.success('Checked out successfully!');
-          fetchDashboardData();
-        }
-      } catch (error) {
-        toast.error('Failed to check out');
-      }
-    }
+  const handleCheckOut = () => {
+    navigate('/driver/check-in-out');
   };
 
   const handleStartTrip = () => {

@@ -11,6 +11,9 @@ router.get('/date', scheduleController.getSchedulesByDate);
 // Chỉ school mới được tạo lịch trình
 router.post('/', authorize('school'), scheduleController.createSchedule);
 
+// Cập nhật lịch trình (Gán tài xế, xe buýt)
+router.put('/:scheduleId', authorize('school'), scheduleController.updateSchedule);
+
 // Thêm học sinh vào lịch trình
 router.post('/:scheduleId/students/:studentId', authorize('school'), scheduleController.assignStudentToSchedule);
 

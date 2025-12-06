@@ -152,7 +152,7 @@ const driverService = {
                         currentStop: `Stop 1 of ${currentTrip.tuyenduong?.tuyenduong_diemdung?.length || 0}`,
                         studentsCount: studentCount
                     } : null,
-                    checkedIn: true,
+                    checkedIn: !!currentTrip,
                     schedules: todaySchedules
                 }
             };

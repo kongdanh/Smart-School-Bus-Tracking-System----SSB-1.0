@@ -66,6 +66,35 @@ exports.getDashboard = async (req, res) => {
       take: 10
     });
 
+    // Format activities for frontend
+    const formattedActivities = recentActivities.map(activity => {
+      let message = '';
+      let type = 'info';
+      let icon = 'ℹ️';
+
+      if (activity.trangThai === 'completed') {
+        message = `Chuyến xe ${activity.xebuyt?.bienSoXe || 'N/A'} đã hoàn thành lộ trình ${activity.tuyenduong?.tenTuyen || 'N/A'}`;
+        type = 'success';
+        icon = '✅';
+      } else if (activity.trangThai === 'in_progress') {
+        message = `Tài xế ${activity.taixe?.user?.hoTen || 'N/A'} đang chạy tuyến ${activity.tuyenduong?.tenTuyen || 'N/A'}`;
+        type = 'warning';
+        icon = '🚌';
+      } else {
+        message = `Lịch trình mới cho xe ${activity.xebuyt?.bienSoXe || 'N/A'} trên tuyến ${activity.tuyenduong?.tenTuyen || 'N/A'}`;
+        type = 'info';
+        icon = '📅';
+      }
+
+      return {
+        id: activity.lichTrinhId,
+        type,
+        icon,
+        message,
+        time: new Date(activity.ngay).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      };
+    });
+
     res.json({
       success: true,
       data: {
@@ -78,13 +107,7 @@ exports.getDashboard = async (req, res) => {
           routes: totalRoutes,
           todaySchedules
         },
-        recentActivities: recentActivities.map(activity => ({
-          id: activity.lichTrinhId,
-          type: 'success',
-          message: `Xe ${activity.xebuyt?.maXe} - Tài xế ${activity.taixe?.user?.hoTen} - Tuyến ${activity.tuyenduong?.tenTuyen}`,
-          time: formatTimeAgo(activity.ngay),
-          icon: '🚌'
-        }))
+        recentActivities: formattedActivities
       }
     });
   } catch (error) {
@@ -893,6 +916,27 @@ exports.addStopToRoute = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi khi thêm điểm dừng'
+    });
+  }
+};
+
+exports.getAllStops = async (req, res) => {
+  try {
+    const stops = await prisma.diemdung.findMany({
+      orderBy: {
+        tenDiemDung: 'asc'
+      }
+    });
+
+    res.json({
+      success: true,
+      data: stops
+    });
+  } catch (error) {
+    console.error('Get all stops error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy danh sách điểm dừng'
     });
   }
 };

@@ -123,7 +123,7 @@ export default function Login() {
             />
           </div>
 
-          <button type="submit" className="login-btn" disabled={loading}>
+          <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
             {loading ? (
               <>
                 <span className="spinner"></span>

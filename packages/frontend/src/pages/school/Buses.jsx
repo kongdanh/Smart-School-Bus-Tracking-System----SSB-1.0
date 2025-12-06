@@ -13,6 +13,8 @@ const Buses = () => {
   const [loading, setLoading] = useState(true);
   const [selectedBusRoutes, setSelectedBusRoutes] = useState(null);
   const [busRoutes, setBusRoutes] = useState([]);
+  const [editingBus, setEditingBus] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Load dữ liệu từ API
   useEffect(() => {
@@ -34,6 +36,50 @@ const Buses = () => {
       toast.error("Lỗi khi tải danh sách xe");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditBus = (bus) => {
+    setEditingBus({ ...bus });
+    setShowEditModal(true);
+  };
+
+  const handleDeleteBus = async (busId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa xe bus này?')) return;
+
+    try {
+      const response = await schoolService.deleteBus(busId);
+      if (response.success) {
+        toast.success('Xóa xe bus thành công!');
+        fetchBuses();
+      } else {
+        toast.error(response.message || 'Không thể xóa xe bus');
+      }
+    } catch (error) {
+      console.error('Delete bus error:', error);
+      toast.error('Lỗi khi xóa xe bus');
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingBus.bienSo || !editingBus.sucChua) {
+      toast.error('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
+    try {
+      const response = await schoolService.updateBus(editingBus.xeBuytId, editingBus);
+      if (response.success) {
+        toast.success('Cập nhật thông tin xe bus thành công!');
+        setShowEditModal(false);
+        setEditingBus(null);
+        fetchBuses();
+      } else {
+        toast.error(response.message || 'Không thể cập nhật');
+      }
+    } catch (error) {
+      console.error('Update bus error:', error);
+      toast.error('Lỗi khi cập nhật thông tin xe bus');
     }
   };
 
@@ -109,7 +155,7 @@ const Buses = () => {
           <h1>Buses Management</h1>
           <p className="header-subtitle">Manage school buses and maintenance schedules</p>
         </div>
-        <button className="btn-add-bus" onClick={() => navigate('/school/buses/add')}>
+        <button className="btn btn-primary" onClick={() => navigate('/school/buses/add')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
@@ -203,7 +249,7 @@ const Buses = () => {
             <option value="inactive">Inactive</option>
           </select>
 
-          <button className="btn-export" onClick={() => exportBuses(filteredBuses)}>
+          <button className="btn btn-secondary" onClick={() => exportBuses(filteredBuses)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
@@ -285,19 +331,28 @@ const Buses = () => {
               </div>
 
               <div className="bus-actions">
-                <button className="btn-primary" onClick={() => handleTrackBus(bus)}>
+                <button className="btn btn-sm btn-primary" onClick={() => handleTrackBus(bus)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
                   Track
                 </button>
-                <button className="btn-secondary" onClick={() => navigate(`/school/buses/${bus.id}/edit`)}>
+                <button className="btn btn-sm btn-secondary" onClick={() => handleEditBus(bus)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
                   Edit
+                </button>
+                <button className="btn btn-sm btn-danger" onClick={() => handleDeleteBus(bus.xeBuytId)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="3,6 5,6 21,6" />
+                    <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6" />
+                    <line x1="10" y1="11" x2="10" y2="17" />
+                    <line x1="14" y1="11" x2="14" y2="17" />
+                  </svg>
+                  Delete
                 </button>
               </div>
             </div>
@@ -312,6 +367,79 @@ const Buses = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Modal */}
+      {showEditModal && editingBus && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit Bus Information</h2>
+              <button className="modal-close" onClick={() => setShowEditModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>License Plate *</label>
+                <input
+                  type="text"
+                  value={editingBus.bienSo || ''}
+                  onChange={(e) => setEditingBus({ ...editingBus, bienSo: e.target.value })}
+                  placeholder="Enter license plate"
+                />
+              </div>
+              <div className="form-group">
+                <label>Capacity *</label>
+                <input
+                  type="number"
+                  value={editingBus.sucChua || ''}
+                  onChange={(e) => setEditingBus({ ...editingBus, sucChua: parseInt(e.target.value) })}
+                  placeholder="Passenger capacity"
+                />
+              </div>
+              <div className="form-group">
+                <label>Seats</label>
+                <input
+                  type="number"
+                  value={editingBus.soGhe || ''}
+                  onChange={(e) => setEditingBus({ ...editingBus, soGhe: parseInt(e.target.value) })}
+                  placeholder="Number of seats"
+                />
+              </div>
+              <div className="form-group">
+                <label>Fuel Type</label>
+                <select
+                  value={editingBus.loaiNhienLieu || 'gasoline'}
+                  onChange={(e) => setEditingBus({ ...editingBus, loaiNhienLieu: e.target.value })}
+                >
+                  <option value="gasoline">Gasoline</option>
+                  <option value="diesel">Diesel</option>
+                  <option value="electric">Electric</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Status</label>
+                <select
+                  value={editingBus.trangThai || 'active'}
+                  onChange={(e) => setEditingBus({ ...editingBus, trangThai: e.target.value })}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="retired">Retired</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleSaveEdit}>
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

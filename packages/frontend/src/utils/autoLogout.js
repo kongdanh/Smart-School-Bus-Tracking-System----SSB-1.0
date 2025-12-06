@@ -62,7 +62,7 @@ const resetInactivityTimer = () => {
         clearTimeout(logoutTimer);
     }
 
-    console.log(`⏰ Timer reset - ${INACTIVITY_TIME / 1000}s đếm ngược...`);
+    // console.log(`⏰ Timer reset - ${INACTIVITY_TIME / 1000}s đếm ngược...`);
 
     // Tạo timer mới
     logoutTimer = setTimeout(() => {

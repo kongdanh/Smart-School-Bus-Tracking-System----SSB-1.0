@@ -50,7 +50,7 @@ const AddDriver = () => {
     return (
         <div className="add-form-container">
             <div className="form-header">
-                <button className="btn-back" onClick={() => navigate('/school/drivers')}>
+                <button className="btn btn-outline" onClick={() => navigate('/school/drivers')}>
                     ← Quay lại
                 </button>
                 <h1>Thêm Tài Xế Mới</h1>
@@ -141,10 +141,10 @@ const AddDriver = () => {
             </div>
 
             <div className="form-footer">
-                <button className="btn-cancel" onClick={() => navigate('/school/drivers')} disabled={loading}>
+                <button className="btn btn-secondary" onClick={() => navigate('/school/drivers')} disabled={loading}>
                     Hủy
                 </button>
-                <button className="btn-submit" onClick={handleSubmit} disabled={loading}>
+                <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
                     {loading ? 'Đang xử lý...' : 'Thêm Tài Xế'}
                 </button>
             </div>

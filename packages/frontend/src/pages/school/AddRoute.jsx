@@ -1,598 +1,421 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import schoolService from '../../services/schoolService';
 import { toast } from 'react-toastify';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { ArrowLeft, Plus, Trash2, MapPin, Save, Search } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 import '../../styles/school-styles/school-add-route.css';
 
-// Danh sách phường/xã TP.HCM
-const DISTRICTS_HCM = [
-    'Quận 1', 'Quận 2', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7',
-    'Quận 8', 'Quận 9', 'Quận 10', 'Quận 11', 'Quận 12',
-    'Quận Bình Tân', 'Quận Bình Thạnh', 'Quận Gò Vấp', 'Quận Phú Nhuận',
-    'Quận Tân Bình', 'Quận Tân Phú', 'Quận Thủ Đức',
-    'Huyện Bình Chánh', 'Huyện Cần Giuộc', 'Huyện Cần Giờ', 'Huyện Châu Thành',
-    'Huyện Hóc Môn', 'Huyện Nhà Bè', 'Huyện Củ Chi'
-];
+// Fix Leaflet icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
-// Hàm geocode địa chỉ (sử dụng OpenStreetMap Nominatim)
-const geocodeAddress = async (address, district) => {
-    try {
-        const fullAddress = `${address}, ${district}, TP. Hồ Chí Minh, Việt Nam`;
-        const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullAddress)}&format=json&limit=1`
-        );
-        const data = await response.json();
-        if (data.length > 0) {
-            return {
-                vido: parseFloat(data[0].lat),
-                kinhdo: parseFloat(data[0].lon)
-            };
-        }
-        return null;
-    } catch (error) {
-        console.error('Geocoding error:', error);
-        return null;
-    }
+// Component to handle map clicks
+const MapClickHandler = ({ onMapClick }) => {
+    useMapEvents({
+        click: (e) => {
+            onMapClick(e.latlng);
+        },
+    });
+    return null;
 };
 
 const AddRoute = () => {
-    const [step, setStep] = useState(1);
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
+
+    // Data State
+    const [existingStops, setExistingStops] = useState([]);
+    const [filteredStops, setFilteredStops] = useState([]);
+    const [stopSearch, setStopSearch] = useState('');
+
+    // Form State
     const [formData, setFormData] = useState({
         maTuyen: '',
         tenTuyen: '',
-        stops: [],
-        selectedBusId: '',
-        selectedDriverId: '',
-        startTime: '',
-        selectedStudents: []
+        stops: [] // Array of { ...stopData, isNew: boolean, tempId: string }
     });
 
-    const [stops, setStops] = useState([]);
-    const [buses, setBuses] = useState([]);
-    const [drivers, setDrivers] = useState([]);
-    const [students, setStudents] = useState([]);
-    const [loading, setLoading] = useState(false);
-
-    const [newStop, setNewStop] = useState({
+    // New Stop Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newStopData, setNewStopData] = useState({
         tenDiemDung: '',
         diaChi: '',
-        selectedStudentId: '',
-        phuongXa: ''
+        vido: 10.762622,
+        kinhdo: 106.682228
     });
 
     useEffect(() => {
-        fetchBusesDriversStudents();
+        fetchStops();
     }, []);
 
-    const fetchBusesDriversStudents = async () => {
-        try {
-            setLoading(true);
-            const [busRes, driverRes, studentRes] = await Promise.all([
-                schoolService.getAllBuses(),
-                schoolService.getAllDrivers(),
-                schoolService.getAllStudents()
-            ]);
+    useEffect(() => {
+        if (stopSearch.trim() === '') {
+            setFilteredStops(existingStops);
+        } else {
+            setFilteredStops(existingStops.filter(s =>
+                s.tenDiemDung.toLowerCase().includes(stopSearch.toLowerCase()) ||
+                (s.diaChi && s.diaChi.toLowerCase().includes(stopSearch.toLowerCase()))
+            ));
+        }
+    }, [stopSearch, existingStops]);
 
-            if (busRes.success) setBuses(busRes.data || []);
-            if (driverRes.success) setDrivers(driverRes.data || []);
-            if (studentRes.success) setStudents(studentRes.data || []);
+    const fetchStops = async () => {
+        try {
+            const response = await schoolService.getAllStops();
+            if (response.success) {
+                setExistingStops(response.data);
+                setFilteredStops(response.data);
+            }
         } catch (error) {
-            console.error('Error fetching data:', error);
-            toast.error('Lỗi khi tải dữ liệu');
-        } finally {
-            setLoading(false);
+            console.error("Error fetching stops:", error);
+            toast.error("Không thể tải danh sách điểm dừng");
         }
     };
 
-    const handleAddStop = async () => {
-        if (!newStop.tenDiemDung || !newStop.diaChi || !newStop.phuongXa) {
-            toast.warning('Vui lòng nhập tên, địa chỉ và chọn phường/xã');
+    const handleAddExistingStop = (stop) => {
+        // Check if already added
+        if (formData.stops.some(s => s.diemDungId === stop.diemDungId)) {
+            toast.warning("Điểm dừng này đã được thêm vào tuyến");
             return;
         }
 
-        // Check for duplicate addresses
-        const isDuplicate = formData.stops.some(s => s.diaChi.toLowerCase() === newStop.diaChi.toLowerCase());
-        if (isDuplicate) {
-            toast.warning('Địa chỉ này đã tồn tại trong danh sách điểm dừng');
+        setFormData(prev => ({
+            ...prev,
+            stops: [...prev.stops, { ...stop, isNew: false }]
+        }));
+        toast.success(`Đã thêm: ${stop.tenDiemDung}`);
+    };
+
+    const handleAddNewStop = () => {
+        if (!newStopData.tenDiemDung) {
+            toast.error("Vui lòng nhập tên điểm dừng");
             return;
         }
 
-        // Geocode the address
-        toast.loading('Đang xử lý toạ độ...');
-        const coords = await geocodeAddress(newStop.diaChi, newStop.phuongXa);
-
-        if (!coords) {
-            toast.error('Không thể xác định toạ độ. Vui lòng kiểm tra địa chỉ');
-            return;
-        }
-
-        const stop = {
-            tenDiemDung: newStop.tenDiemDung,
-            diaChi: newStop.diaChi,
-            vido: coords.vido,
-            kinhdo: coords.kinhdo,
-            id: Date.now(),
-            thuTu: formData.stops.length + 1
+        const tempStop = {
+            ...newStopData,
+            isNew: true,
+            tempId: `new-${Date.now()}`,
+            diemDungId: null // Placeholder
         };
 
         setFormData(prev => ({
             ...prev,
-            stops: [...prev.stops, stop]
+            stops: [...prev.stops, tempStop]
         }));
 
-        setNewStop({
+        setIsModalOpen(false);
+        setNewStopData({
             tenDiemDung: '',
             diaChi: '',
-            selectedStudentId: '',
-            phuongXa: ''
+            vido: 10.762622,
+            kinhdo: 106.682228
         });
-
-        toast.success('Đã thêm điểm dừng');
+        toast.success("Đã thêm điểm dừng mới (chưa lưu)");
     };
 
-    // Handle student selection for auto-filling stop address
-    const handleStudentSelect = (studentId) => {
-        if (!studentId) {
-            setNewStop(prev => ({
-                ...prev,
-                selectedStudentId: '',
-                tenDiemDung: '',
-                diaChi: '',
-                phuongXa: ''
-            }));
-            return;
-        }
-
-        const student = students.find(s => s.id === parseInt(studentId) || s.maHS === studentId);
-        if (student) {
-            setNewStop(prev => ({
-                ...prev,
-                selectedStudentId: studentId,
-                tenDiemDung: student.hoTen || '',
-                diaChi: student.diemDon || student.diaChiHienTai || '',
-                phuongXa: student.phuongXa || student.quan || ''
-            }));
-        }
-    };
-
-    const handleRemoveStop = (id) => {
+    const handleRemoveStop = (index) => {
         setFormData(prev => ({
             ...prev,
-            stops: prev.stops.filter(s => s.id !== id)
+            stops: prev.stops.filter((_, i) => i !== index)
         }));
     };
 
-    const handleStudentToggle = (studentId) => {
-        setFormData(prev => ({
-            ...prev,
-            selectedStudents: prev.selectedStudents.includes(studentId)
-                ? prev.selectedStudents.filter(id => id !== studentId)
-                : [...prev.selectedStudents, studentId]
-        }));
-    };
-
-    const handleNextStep = () => {
-        if (step === 1) {
-            if (!formData.maTuyen || !formData.tenTuyen || formData.stops.length === 0) {
-                toast.warning('Vui lòng nhập mã tuyến, tên tuyến và ít nhất 1 điểm dừng');
-                return;
-            }
-            setStep(2);
-        } else if (step === 2) {
-            if (!formData.selectedBusId || !formData.selectedDriverId) {
-                toast.warning('Vui lòng chọn xe buýt và tài xế');
-                return;
-            }
-            setStep(3);
-        } else if (step === 3) {
-            if (!formData.startTime) {
-                toast.warning('Vui lòng nhập giờ bắt đầu');
-                return;
-            }
-            setStep(4);
+    const handleMoveStop = (index, direction) => {
+        const newStops = [...formData.stops];
+        if (direction === 'up' && index > 0) {
+            [newStops[index], newStops[index - 1]] = [newStops[index - 1], newStops[index]];
+        } else if (direction === 'down' && index < newStops.length - 1) {
+            [newStops[index], newStops[index + 1]] = [newStops[index + 1], newStops[index]];
         }
-    };
-
-    const handlePrevStep = () => {
-        if (step > 1) setStep(step - 1);
+        setFormData(prev => ({ ...prev, stops: newStops }));
     };
 
     const handleSubmit = async () => {
-        if (formData.selectedStudents.length === 0) {
-            toast.warning('Vui lòng chọn ít nhất 1 học sinh');
+        if (!formData.maTuyen || !formData.tenTuyen) {
+            toast.error("Vui lòng nhập mã tuyến và tên tuyến");
+            return;
+        }
+        if (formData.stops.length < 2) {
+            toast.error("Tuyến đường cần ít nhất 2 điểm dừng");
             return;
         }
 
         try {
             setLoading(true);
 
-            // Create route
+            // 1. Create Route
             const routeRes = await schoolService.createRoute({
                 maTuyen: formData.maTuyen,
                 tenTuyen: formData.tenTuyen
             });
 
             if (!routeRes.success) {
-                toast.error(routeRes.message || 'Lỗi khi tạo tuyến');
-                return;
+                throw new Error(routeRes.message || "Lỗi khi tạo tuyến");
             }
 
             const routeId = routeRes.data.tuyenDuongId;
 
-            // Add stops to route
-            for (const stop of formData.stops) {
-                await schoolService.addStopToRoute(routeId, {
-                    tenDiemDung: stop.tenDiemDung,
-                    diaChi: stop.diaChi,
-                    vido: parseFloat(stop.vido) || null,
-                    kinhdo: parseFloat(stop.kinhdo) || null,
-                    thuTu: stop.thuTu
-                });
+            // 2. Add Stops
+            for (let i = 0; i < formData.stops.length; i++) {
+                const stop = formData.stops[i];
+                const payload = {
+                    thuTu: i + 1,
+                    diemDungId: stop.isNew ? null : stop.diemDungId,
+                    // If new, include details
+                    tenDiemDung: stop.isNew ? stop.tenDiemDung : undefined,
+                    diaChi: stop.isNew ? stop.diaChi : undefined,
+                    vido: stop.isNew ? stop.vido : undefined,
+                    kinhdo: stop.isNew ? stop.kinhdo : undefined
+                };
+
+                await schoolService.addStopToRoute(routeId, payload);
             }
 
-            // Fix timezone: adjust startTime by adding UTC+7 offset
-            const [hours, minutes] = formData.startTime.split(':');
-            const adjustedDate = new Date();
-            adjustedDate.setHours(parseInt(hours), parseInt(minutes), 0);
-            adjustedDate.setHours(adjustedDate.getHours() + 7);
-            const adjustedTime = adjustedDate.toTimeString().slice(0, 5);
+            toast.success("Tạo tuyến đường thành công!");
+            navigate('/school/routes');
 
-            // Calculate end time = start time + 2 hours
-            const endDate = new Date();
-            endDate.setHours(parseInt(hours) + 2, parseInt(minutes), 0);
-            endDate.setHours(endDate.getHours() + 7);
-            const endTime = endDate.toTimeString().slice(0, 5);
-
-            // Create schedule
-            const scheduleRes = await schoolService.createSchedule({
-                maLich: `LCH-${formData.maTuyen}-${Date.now()}`,
-                ngay: new Date().toISOString().split('T')[0],
-                gioKhoiHanh: adjustedTime,
-                gioKetThuc: endTime,
-                tuyenDuongId: routeId,
-                xeBuytId: parseInt(formData.selectedBusId),
-                taiXeId: parseInt(formData.selectedDriverId)
-            });
-
-            if (!scheduleRes.success) {
-                toast.error(scheduleRes.message || 'Lỗi khi tạo lịch trình');
-                return;
-            }
-
-            // Assign students to schedule
-            const scheduleId = scheduleRes.data.lichTrinhId;
-            for (const studentId of formData.selectedStudents) {
-                await schoolService.assignStudentToSchedule(scheduleId, studentId);
-            }
-
-            toast.success('Tạo tuyến đường thành công!');
-            // Redirect back and reload
-            setTimeout(() => {
-                window.history.back();
-            }, 500);
         } catch (error) {
-            console.error('Error creating route:', error);
-            toast.error('Lỗi khi tạo tuyến đường');
+            console.error("Submit error:", error);
+            toast.error(error.message || "Có lỗi xảy ra");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="add-route-container">
-            <div className="add-route-header">
-                <h1>Tạo Tuyến Đường Mới</h1>
-                <p className="step-indicator">Bước {step}/4</p>
-            </div>
-
-            <div className="add-route-progress">
-                <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>
-                    <div className="step-number">1</div>
-                    <div className="step-label">Điểm Dừng</div>
-                </div>
-                <div className="progress-line"></div>
-                <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>
-                    <div className="step-number">2</div>
-                    <div className="step-label">Xe & Tài Xế</div>
-                </div>
-                <div className="progress-line"></div>
-                <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>
-                    <div className="step-number">3</div>
-                    <div className="step-label">Lịch Trình</div>
-                </div>
-                <div className="progress-line"></div>
-                <div className={`progress-step ${step >= 4 ? 'active' : ''}`}>
-                    <div className="step-number">4</div>
-                    <div className="step-label">Học Sinh</div>
-                </div>
-            </div>
-
-            <div className="add-route-content">
-                {/* Step 1: Route Info & Stops */}
-                {step === 1 && (
-                    <div className="form-step">
-                        <div className="form-section">
-                            <h2>Thông Tin Tuyến Đường</h2>
-                            <div className="form-grid">
-                                <div className="form-group">
-                                    <label>Mã Tuyến *</label>
-                                    <input
-                                        type="text"
-                                        placeholder="VD: R001, R002"
-                                        value={formData.maTuyen}
-                                        onChange={e => setFormData(prev => ({ ...prev, maTuyen: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Tên Tuyến *</label>
-                                    <input
-                                        type="text"
-                                        placeholder="VD: Tuyến Quận 1"
-                                        value={formData.tenTuyen}
-                                        onChange={e => setFormData(prev => ({ ...prev, tenTuyen: e.target.value }))}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="form-section">
-                            <h2>Thêm Điểm Dừng</h2>
-                            <div className="stop-input-group">
-                                <div className="form-grid">
-                                    <div className="form-group full-width">
-                                        <label>Bước 1: Chọn Phường/Xã *</label>
-                                        <select
-                                            value={newStop.phuongXa}
-                                            onChange={e => setNewStop(prev => ({ ...prev, phuongXa: e.target.value }))}
-                                            className="student-select"
-                                        >
-                                            <option value="">-- Chọn Phường/Xã --</option>
-                                            {DISTRICTS_HCM.map(district => (
-                                                <option key={district} value={district}>
-                                                    {district}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="form-group full-width">
-                                        <label>Bước 2: Chọn Học Sinh hoặc Nhập Địa Chỉ</label>
-                                        <select
-                                            value={newStop.selectedStudentId}
-                                            onChange={e => handleStudentSelect(e.target.value)}
-                                            className="student-select"
-                                        >
-                                            <option value="">-- Hoặc nhập thủ công --</option>
-                                            {students
-                                                .filter(s => !newStop.phuongXa || s.phuongXa === newStop.phuongXa || s.quan === newStop.phuongXa)
-                                                .map((student, idx) => (
-                                                    <option key={`${student.id}-${idx}`} value={student.id}>
-                                                        {student.hoTen} ({student.lop}) - {student.diemDon || student.diaChiHienTai || 'N/A'}
-                                                    </option>
-                                                ))
-                                            }
-                                        </select>
-                                    </div>
-                                    <div className="form-group full-width">
-                                        <label>Tên Điểm Dừng *</label>
-                                        <input
-                                            type="text"
-                                            placeholder="VD: Siêu thị ABC, Công viên XYZ"
-                                            value={newStop.tenDiemDung}
-                                            onChange={e => setNewStop(prev => ({ ...prev, tenDiemDung: e.target.value }))}
-                                        />
-                                    </div>
-                                    <div className="form-group full-width">
-                                        <label>Địa Chỉ Chi Tiết * (số nhà, đường phố)</label>
-                                        <input
-                                            type="text"
-                                            placeholder="VD: 123 Lê Lợi"
-                                            value={newStop.diaChi}
-                                            onChange={e => setNewStop(prev => ({ ...prev, diaChi: e.target.value }))}
-                                        />
-                                    </div>
-                                </div>
-                                <button className="btn-add-stop" onClick={handleAddStop}>
-                                    + Thêm Điểm Dừng
-                                </button>
-                            </div>
-
-                            {formData.stops.length > 0 && (
-                                <div className="stops-list">
-                                    <h3>Danh Sách Điểm Dừng ({formData.stops.length})</h3>
-                                    <div className="stops-table">
-                                        {formData.stops.map((stop, idx) => (
-                                            <div key={stop.id} className="stop-item">
-                                                <div className="stop-order">{idx + 1}</div>
-                                                <div className="stop-info">
-                                                    <div className="stop-name">{stop.tenDiemDung}</div>
-                                                    <div className="stop-address">{stop.diaChi}</div>
-                                                    {stop.vido && stop.kinhdo && (
-                                                        <div className="stop-coords">({stop.vido}, {stop.kinhdo})</div>
-                                                    )}
-                                                </div>
-                                                <button
-                                                    className="btn-remove-stop"
-                                                    onClick={() => handleRemoveStop(stop.id)}
-                                                    title="Xóa"
-                                                >
-                                                    ✕
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 2: Bus & Driver */}
-                {step === 2 && (
-                    <div className="form-step">
-                        <div className="form-section">
-                            <h2>Chọn Xe Buýt</h2>
-                            <div className="bus-grid">
-                                {buses.map(bus => (
-                                    <div
-                                        key={bus.xeBuytId || bus.id}
-                                        className={`bus-card ${formData.selectedBusId === String(bus.xeBuytId || bus.id) ? 'selected' : ''}`}
-                                        onClick={() => setFormData(prev => ({ ...prev, selectedBusId: String(bus.xeBuytId || bus.id) }))}
-                                    >
-                                        <div className="bus-icon">🚌</div>
-                                        <div className="bus-info">
-                                            <div className="bus-plate">{bus.bienSoXe || bus.bienSo}</div>
-                                            <div className="bus-seats">{bus.soGhe || 45} chỗ ngồi</div>
-                                            <div className={`bus-status ${bus.trangThai?.toLowerCase() || 'active'}`}>
-                                                {bus.trangThai || 'Đang hoạt động'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="form-section">
-                            <h2>Chọn Tài Xế</h2>
-                            <div className="driver-grid">
-                                {drivers.map(driver => (
-                                    <div
-                                        key={driver.taiXeId || driver.id}
-                                        className={`driver-card ${formData.selectedDriverId === String(driver.taiXeId || driver.id) ? 'selected' : ''}`}
-                                        onClick={() => setFormData(prev => ({ ...prev, selectedDriverId: String(driver.taiXeId || driver.id) }))}
-                                    >
-                                        <div className="driver-icon">👨‍🚗</div>
-                                        <div className="driver-info">
-                                            <div className="driver-name">{driver.hoTen || driver.hoTenTx}</div>
-                                            <div className="driver-phone">{driver.soDienThoai || driver.dienThoai}</div>
-                                            <div className={`driver-status ${driver.trangThai?.toLowerCase() || 'active'}`}>
-                                                {driver.trangThai || 'Sẵn sàng'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 3: Schedule */}
-                {step === 3 && (
-                    <div className="form-step">
-                        <div className="form-section">
-                            <h2>Cấu Hình Lịch Trình</h2>
-                            <div className="form-grid">
-                                <div className="form-group">
-                                    <label>Giờ Bắt Đầu *</label>
-                                    <input
-                                        type="time"
-                                        value={formData.startTime}
-                                        onChange={e => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Tuyến</label>
-                                    <input type="text" value={formData.tenTuyen} disabled />
-                                </div>
-                                <div className="form-group">
-                                    <label>Xe Buýt</label>
-                                    <input
-                                        type="text"
-                                        value={buses.find(b => String(b.xeBuytId || b.id) === formData.selectedBusId)?.bienSoXe || buses.find(b => String(b.xeBuytId || b.id) === formData.selectedBusId)?.bienSo || ''}
-                                        disabled
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Tài Xế</label>
-                                    <input
-                                        type="text"
-                                        value={drivers.find(d => String(d.taiXeId || d.id) === formData.selectedDriverId)?.hoTen || drivers.find(d => String(d.taiXeId || d.id) === formData.selectedDriverId)?.hoTenTx || ''}
-                                        disabled
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="schedule-summary">
-                                <h3>Tóm Tắt Lịch Trình</h3>
-                                <div className="summary-items">
-                                    <div className="summary-item">
-                                        <span>Số Điểm Dừng:</span>
-                                        <strong>{formData.stops.length}</strong>
-                                    </div>
-                                    <div className="summary-item">
-                                        <span>Số Học Sinh:</span>
-                                        <strong>{formData.selectedStudents.length}</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 4: Students */}
-                {step === 4 && (
-                    <div className="form-step">
-                        <div className="form-section">
-                            <h2>Chọn Học Sinh cho Tuyến</h2>
-                            <div className="students-selection">
-                                {students.length > 0 ? (
-                                    <div className="students-grid">
-                                        {students.map(student => (
-                                            <div
-                                                key={student.hocSinhId || student.id}
-                                                className={`student-checkbox ${formData.selectedStudents.includes(student.hocSinhId || student.id) ? 'checked' : ''}`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    id={`student-${student.hocSinhId || student.id}`}
-                                                    checked={formData.selectedStudents.includes(student.hocSinhId || student.id)}
-                                                    onChange={() => handleStudentToggle(student.hocSinhId || student.id)}
-                                                />
-                                                <label htmlFor={`student-${student.hocSinhId || student.id}`}>
-                                                    <div className="student-check-info">
-                                                        <div className="student-check-name">{student.hoTen}</div>
-                                                        <div className="student-check-class">{student.lop || 'N/A'}</div>
-                                                    </div>
-                                                </label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="no-data">Không có học sinh nào</div>
-                                )}
-                            </div>
-
-                            <div className="selection-summary">
-                                <strong>Đã chọn {formData.selectedStudents.length} học sinh</strong>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div className="add-route-footer">
-                <button
-                    className="btn-prev"
-                    onClick={handlePrevStep}
-                    disabled={step === 1}
-                >
-                    ← Quay Lại
+        <div className="add-route-container p-6 max-w-7xl mx-auto">
+            <div className="flex items-center gap-4 mb-6">
+                <button onClick={() => navigate('/school/routes')} className="p-2 hover:bg-gray-100 rounded-full">
+                    <ArrowLeft size={24} />
                 </button>
+                <h1 className="text-2xl font-bold">Thêm Tuyến Đường Mới</h1>
+            </div>
 
-                {step < 4 ? (
-                    <button className="btn-next" onClick={handleNextStep} disabled={loading}>
-                        Tiếp Theo →
-                    </button>
-                ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column: Route Info & Selected Stops */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Route Info Card */}
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <h2 className="text-lg font-semibold mb-4">Thông Tin Tuyến</h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Mã Tuyến</label>
+                                <input
+                                    type="text"
+                                    value={formData.maTuyen}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, maTuyen: e.target.value }))}
+                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                                    placeholder="VD: R01"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tên Tuyến</label>
+                                <input
+                                    type="text"
+                                    value={formData.tenTuyen}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, tenTuyen: e.target.value }))}
+                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                                    placeholder="VD: Tuyến Quận 1 - Quận 3"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Selected Stops List */}
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold">Danh Sách Điểm Dừng ({formData.stops.length})</h2>
+                            <button
+                                onClick={() => setIsModalOpen(true)}
+                                className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                            >
+                                <Plus size={16} /> Tạo điểm dừng mới
+                            </button>
+                        </div>
+
+                        {formData.stops.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
+                                Chưa có điểm dừng nào. Hãy chọn từ danh sách bên phải hoặc tạo mới.
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {formData.stops.map((stop, index) => (
+                                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded border group">
+                                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">
+                                            {index + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-medium">{stop.tenDiemDung}</div>
+                                            <div className="text-xs text-gray-500">{stop.diaChi}</div>
+                                            {stop.isNew && <span className="text-xs text-green-600 font-medium bg-green-50 px-1 rounded">Mới</span>}
+                                        </div>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => handleMoveStop(index, 'up')}
+                                                disabled={index === 0}
+                                                className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
+                                            >
+                                                ↑
+                                            </button>
+                                            <button
+                                                onClick={() => handleMoveStop(index, 'down')}
+                                                disabled={index === formData.stops.length - 1}
+                                                className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
+                                            >
+                                                ↓
+                                            </button>
+                                            <button
+                                                onClick={() => handleRemoveStop(index)}
+                                                className="p-1 hover:bg-red-100 text-red-600 rounded"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Column: Available Stops */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border h-[calc(100vh-100px)] flex flex-col">
+                    <h2 className="text-lg font-semibold mb-4">Điểm Dừng Có Sẵn</h2>
+
+                    <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Tìm điểm dừng..."
+                            value={stopSearch}
+                            onChange={(e) => setStopSearch(e.target.value)}
+                            className="w-full pl-10 p-2 border rounded"
+                        />
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                        {filteredStops.map(stop => (
+                            <div
+                                key={stop.diemDungId}
+                                className="p-3 border rounded hover:bg-blue-50 cursor-pointer transition-colors"
+                                onClick={() => handleAddExistingStop(stop)}
+                            >
+                                <div className="font-medium text-sm">{stop.tenDiemDung}</div>
+                                <div className="text-xs text-gray-500 truncate">{stop.diaChi}</div>
+                            </div>
+                        ))}
+                        {filteredStops.length === 0 && (
+                            <div className="text-center text-gray-500 text-sm py-4">
+                                Không tìm thấy điểm dừng.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-10">
+                <div className="max-w-7xl mx-auto flex justify-end gap-4">
                     <button
-                        className="btn-submit"
+                        onClick={() => navigate('/school/routes')}
+                        className="px-6 py-2 border rounded hover:bg-gray-50"
+                    >
+                        Hủy
+                    </button>
+                    <button
                         onClick={handleSubmit}
                         disabled={loading}
+                        className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
                     >
-                        {loading ? 'Đang xử lý...' : 'Hoàn Thành'}
+                        {loading ? 'Đang xử lý...' : <><Save size={18} /> Lưu Tuyến Đường</>}
                     </button>
-                )}
+                </div>
             </div>
+
+            {/* New Stop Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+                        <div className="p-4 border-b flex justify-between items-center">
+                            <h3 className="text-lg font-bold">Tạo Điểm Dừng Mới</h3>
+                            <button onClick={() => setIsModalOpen(false)}><XIcon /></button>
+                        </div>
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Tên Điểm Dừng</label>
+                                    <input
+                                        type="text"
+                                        className="w-full p-2 border rounded"
+                                        value={newStopData.tenDiemDung}
+                                        onChange={e => setNewStopData(prev => ({ ...prev, tenDiemDung: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Địa Chỉ</label>
+                                    <input
+                                        type="text"
+                                        className="w-full p-2 border rounded"
+                                        value={newStopData.diaChi}
+                                        onChange={e => setNewStopData(prev => ({ ...prev, diaChi: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Vĩ độ</label>
+                                        <input
+                                            type="number"
+                                            className="w-full p-2 border rounded"
+                                            value={newStopData.vido}
+                                            onChange={e => setNewStopData(prev => ({ ...prev, vido: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Kinh độ</label>
+                                        <input
+                                            type="number"
+                                            className="w-full p-2 border rounded"
+                                            value={newStopData.kinhdo}
+                                            onChange={e => setNewStopData(prev => ({ ...prev, kinhdo: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-500 italic">
+                                    * Nhấp vào bản đồ để chọn vị trí chính xác
+                                </p>
+                            </div>
+                            <div className="h-64 bg-gray-100 rounded overflow-hidden">
+                                <MapContainer center={[10.762622, 106.682228]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                    <Marker position={[newStopData.vido, newStopData.kinhdo]} />
+                                    <MapClickHandler onMapClick={(latlng) => setNewStopData(prev => ({ ...prev, vido: latlng.lat, kinhdo: latlng.lng }))} />
+                                </MapContainer>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t flex justify-end gap-2">
+                            <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded">Hủy</button>
+                            <button onClick={handleAddNewStop} className="px-4 py-2 bg-blue-600 text-white rounded">Thêm</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
+const XIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+);
 
 export default AddRoute;

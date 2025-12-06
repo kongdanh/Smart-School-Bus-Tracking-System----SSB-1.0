@@ -18,6 +18,7 @@ router.get('/schedule/today', driverController.getTodaySchedule);
 
 // Lấy danh sách tất cả (Dành cho Admin/Manager)
 // Bạn có thể thêm authorize('school', 'admin') vào đây nếu cần bảo mật hơn
+router.get('/all', driverController.getAllDrivers);
 router.get('/', driverController.getAllDrivers);
 
 

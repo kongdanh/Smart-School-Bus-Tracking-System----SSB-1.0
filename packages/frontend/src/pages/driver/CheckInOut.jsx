@@ -218,8 +218,9 @@ export default function CheckInOut() {
                 <div className="schedule-preview">
                     <h3>Lịch trình hôm nay ({new Date().toLocaleDateString('vi-VN')})</h3>
                     <div className="schedule-list">
-                        {schedules.length === 0 ? <p className="no-data">Hôm nay không có lịch trình nào.</p> :
-                            schedules.map((sch) => (
+                        {schedules.filter(s => s.trangThai !== 'completed').length === 0 ?
+                            <p className="no-data">Không có lịch trình nào cần chạy.</p> :
+                            schedules.filter(s => s.trangThai !== 'completed').map((sch) => (
                                 <div key={sch.lichTrinhId} className={`schedule-item ${sch.trangThai}`}>
                                     <div className="time-badge">{formatTime(sch.gioKhoiHanh)}</div>
                                     <div className="schedule-info">
@@ -227,8 +228,7 @@ export default function CheckInOut() {
                                         <p>
                                             Trạng thái:
                                             <span className={`status-label ${sch.trangThai}`}>
-                                                {sch.trangThai === 'in_progress' ? ' Đang chạy' :
-                                                    (sch.trangThai === 'completed' ? ' Hoàn thành' : ' Chưa chạy')}
+                                                {sch.trangThai === 'in_progress' ? ' Đang chạy' : ' Chưa chạy'}
                                             </span>
                                         </p>
                                     </div>

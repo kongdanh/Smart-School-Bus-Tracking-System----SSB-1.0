@@ -47,10 +47,19 @@ const scheduleService = {
     // Thêm lịch trình mới
     createSchedule: async (scheduleData) => {
         try {
+            console.log('=== ScheduleService.createSchedule ===');
+            console.log('Request data:', scheduleData);
+            console.log('API URL:', `${API_URL}/schedule`);
+
             const response = await axiosInstance.post("/", scheduleData);
+            console.log('Response:', response.data);
             return response.data;
         } catch (error) {
-            console.error("Create schedule error:", error);
+            console.error("=== ScheduleService.createSchedule Error ===");
+            console.error("Error details:", error);
+            console.error("Error response:", error.response?.data);
+            console.error("Error status:", error.response?.status);
+            console.error("Error config:", error.config);
             throw error;
         }
     },

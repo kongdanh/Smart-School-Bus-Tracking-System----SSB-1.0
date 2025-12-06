@@ -34,6 +34,7 @@ router.post('/routes', schoolController.createRoute);
 router.get('/routes/:id', schoolController.getRouteById);
 router.post('/routes/:routeId/stops', schoolController.addStopToRoute);
 router.get('/routes/:routeId/stops', schoolController.getRouteStops);
+router.get('/stops', schoolController.getAllStops); // New route for fetching all stops
 
 // ==================== LỊCH TRÌNH ====================
 router.get('/schedules', schoolController.getAllSchedules);
