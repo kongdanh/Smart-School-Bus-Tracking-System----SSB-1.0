@@ -123,12 +123,25 @@ exports.getSchedulesByDate = async (req, res) => {
     }
 };
 
+// Helper để parse time string "HH:mm" thành Date object
+const parseTime = (timeStr) => {
+    if (!timeStr) return undefined;
+    if (timeStr instanceof Date) return timeStr;
+
+    // Nếu là ISO string
+    if (timeStr.includes('T')) return new Date(timeStr);
+
+    // Nếu là "HH:mm" hoặc "HH:mm:ss"
+    const [hours, minutes] = timeStr.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    return date;
+};
+
 // Tạo lịch trình mới (Hỗ trợ tạo hàng loạt và gán học sinh)
 exports.createSchedule = async (req, res) => {
     try {
         console.log('=== CreateSchedule API ===');
-        console.log('Request body:', JSON.stringify(req.body, null, 2));
-        console.log('User:', req.user);
 
         const {
             maLich,
@@ -142,13 +155,8 @@ exports.createSchedule = async (req, res) => {
             studentIds // Danh sách ID học sinh
         } = req.body;
 
-        console.log('Extracted data:', {
-            maLich, ngay, dates, gioKhoiHanh, gioKetThuc,
-            tuyenDuongId, taiXeId, xeBuytId, studentIds
-        });
-
+        // Validation cơ bản
         if (!maLich || (!ngay && (!dates || dates.length === 0))) {
-            console.log('Validation failed: Missing maLich or dates');
             return res.status(400).json({
                 success: false,
                 message: 'Mã lịch và ngày là bắt buộc'
@@ -159,66 +167,73 @@ exports.createSchedule = async (req, res) => {
         const createdSchedules = [];
         const errors = [];
 
+        // Xử lý từng ngày trong transaction để đảm bảo tính toàn vẹn
         for (const dateStr of targetDates) {
             try {
-                // Tạo mã lịch unique nếu tạo nhiều
-                const uniqueCode = targetDates.length > 1
-                    ? `${maLich}-${new Date(dateStr).toISOString().split('T')[0].replace(/-/g, '')}`
-                    : maLich;
+                await prisma.$transaction(async (tx) => {
+                    // 1. Tạo mã lịch unique
+                    const uniqueCode = targetDates.length > 1
+                        ? `${maLich}-${new Date(dateStr).toISOString().split('T')[0].replace(/-/g, '')}`
+                        : maLich;
 
-                // Kiểm tra trùng mã
-                const existing = await prisma.lichtrinh.findUnique({ where: { maLich: uniqueCode } });
-                if (existing) {
-                    errors.push(`Lịch trình ${uniqueCode} đã tồn tại`);
-                    continue;
-                }
+                    // Kiểm tra trùng mã (trong transaction)
+                    const existing = await tx.lichtrinh.findUnique({ where: { maLich: uniqueCode } });
+                    const finalCode = existing ? `${uniqueCode}-${Date.now()}` : uniqueCode;
 
-                const schedule = await prisma.lichtrinh.create({
-                    data: {
-                        maLich: uniqueCode,
-                        ngay: new Date(dateStr),
-                        gioKhoiHanh: gioKhoiHanh || '06:30',
-                        gioKetThuc: gioKetThuc || '07:30',
-                        tuyenDuongId: tuyenDuongId ? parseInt(tuyenDuongId) : null,
-                        taiXeId: taiXeId ? parseInt(taiXeId) : null,
-                        xeBuytId: xeBuytId ? parseInt(xeBuytId) : null,
-                        trangThai: 'scheduled'
-                    },
-                    include: {
-                        tuyenduong: true,
-                        taixe: true,
-                        xebuyt: true
-                    }
-                });
-
-                // Create student trips separately if needed
-                if (studentIds && studentIds.length > 0) {
-                    await prisma.studentTrip.createMany({
-                        data: studentIds.map(id => ({
-                            lichTrinhId: schedule.lichTrinhId,
-                            hocSinhId: parseInt(id),
-                            ngayTao: new Date()
-                        }))
+                    // 2. Tạo lịch trình
+                    const schedule = await tx.lichtrinh.create({
+                        data: {
+                            maLich: finalCode,
+                            ngay: new Date(dateStr),
+                            gioKhoiHanh: parseTime(gioKhoiHanh) || parseTime('06:30'),
+                            gioKetThuc: parseTime(gioKetThuc) || parseTime('07:30'),
+                            tuyenDuongId: tuyenDuongId ? parseInt(tuyenDuongId) : null,
+                            taiXeId: taiXeId ? parseInt(taiXeId) : null,
+                            xeBuytId: xeBuytId ? parseInt(xeBuytId) : null,
+                            trangThai: 'scheduled'
+                        },
+                        include: {
+                            tuyenduong: true,
+                            taixe: true,
+                            xebuyt: true
+                        }
                     });
-                }
-                createdSchedules.push(schedule);
+
+                    // 3. Tạo danh sách học sinh đi theo lịch (nếu có)
+                    if (studentIds && studentIds.length > 0) {
+                        // Lọc bỏ các ID không hợp lệ hoặc trùng lặp
+                        const uniqueStudentIds = [...new Set(studentIds)].map(id => parseInt(id)).filter(id => !isNaN(id));
+
+                        if (uniqueStudentIds.length > 0) {
+                            await tx.studentTrip.createMany({
+                                data: uniqueStudentIds.map(id => ({
+                                    lichTrinhId: schedule.lichTrinhId,
+                                    hocSinhId: id
+                                }))
+                            });
+                        }
+                    }
+
+                    createdSchedules.push(schedule);
+                });
             } catch (err) {
                 console.error(`Error creating schedule for ${dateStr}:`, err);
-                errors.push(`Lỗi tạo lịch ngày ${dateStr}`);
+                // Chi tiết lỗi để debug
+                errors.push(`Lỗi ngày ${dateStr}: ${err.message}`);
             }
         }
 
         if (createdSchedules.length === 0 && errors.length > 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Không thể tạo lịch trình',
+                message: 'Không thể tạo lịch trình. Vui lòng kiểm tra lại dữ liệu.',
                 errors
             });
         }
 
         res.status(201).json({
             success: true,
-            message: `Đã tạo ${createdSchedules.length} lịch trình`,
+            message: `Đã phân công ${createdSchedules.length} lịch trình thành công`,
             data: createdSchedules,
             errors: errors.length > 0 ? errors : undefined
         });
@@ -226,7 +241,7 @@ exports.createSchedule = async (req, res) => {
         console.error('Create schedule error:', error);
         res.status(500).json({
             success: false,
-            message: 'Lỗi hệ thống khi tạo lịch trình'
+            message: 'Lỗi hệ thống khi tạo lịch trình: ' + error.message
         });
     }
 };
@@ -314,8 +329,8 @@ exports.updateSchedule = async (req, res) => {
             data: {
                 ...(maLich && { maLich }),
                 ...(ngay && { ngay: new Date(ngay) }),
-                ...(gioKhoiHanh && { gioKhoiHanh }),
-                ...(gioKetThuc && { gioKetThuc }),
+                ...(gioKhoiHanh && { gioKhoiHanh: parseTime(gioKhoiHanh) }),
+                ...(gioKetThuc && { gioKetThuc: parseTime(gioKetThuc) }),
                 ...(tuyenDuongId && { tuyenDuongId: parseInt(tuyenDuongId) }),
                 ...(taiXeId && { taiXeId: parseInt(taiXeId) }),
                 ...(xeBuytId && { xeBuytId: parseInt(xeBuytId) }),
@@ -336,22 +351,65 @@ exports.updateSchedule = async (req, res) => {
 
         // Update student assignments if provided
         if (Array.isArray(studentIds)) {
-            // Delete existing student trips
-            await prisma.studentTrip.deleteMany({
-                where: { lichTrinhId: parseInt(scheduleId) }
+            const scheduleIdInt = parseInt(scheduleId);
+
+            // Check current status to decide update strategy
+            const currentSchedule = await prisma.lichtrinh.findUnique({
+                where: { lichTrinhId: scheduleIdInt },
+                select: { trangThai: true }
             });
 
-            // Create new student trips
-            if (studentIds.length > 0) {
-                const studentTrips = studentIds.map(studentId => ({
-                    lichTrinhId: parseInt(scheduleId),
-                    hocSinhId: parseInt(studentId),
-                    ngayTao: new Date()
-                }));
-
-                await prisma.studentTrip.createMany({
-                    data: studentTrips
+            if (currentSchedule && (currentSchedule.trangThai === 'in_progress' || currentSchedule.trangThai === 'completed')) {
+                // Smart update: only add/remove, preserve existing status
+                const existingTrips = await prisma.studentTrip.findMany({
+                    where: { lichTrinhId: scheduleIdInt },
+                    select: { hocSinhId: true }
                 });
+
+                const existingIds = existingTrips.map(t => t.hocSinhId);
+                const newIds = studentIds.map(id => parseInt(id));
+
+                // To delete: present in existing but not in new
+                const toDelete = existingIds.filter(id => !newIds.includes(id));
+
+                // To add: present in new but not in existing
+                const toAdd = newIds.filter(id => !existingIds.includes(id));
+
+                if (toDelete.length > 0) {
+                    await prisma.studentTrip.deleteMany({
+                        where: {
+                            lichTrinhId: scheduleIdInt,
+                            hocSinhId: { in: toDelete }
+                        }
+                    });
+                }
+
+                if (toAdd.length > 0) {
+                    await prisma.studentTrip.createMany({
+                        data: toAdd.map(studentId => ({
+                            lichTrinhId: scheduleIdInt,
+                            hocSinhId: studentId,
+                            trangThai: 'pending'
+                        }))
+                    });
+                }
+            } else {
+                // Scheduled/Cancelled: Safe to reset
+                await prisma.studentTrip.deleteMany({
+                    where: { lichTrinhId: scheduleIdInt }
+                });
+
+                if (studentIds.length > 0) {
+                    const studentTrips = studentIds.map(studentId => ({
+                        lichTrinhId: scheduleIdInt,
+                        hocSinhId: parseInt(studentId),
+                        trangThai: 'pending'
+                    }));
+
+                    await prisma.studentTrip.createMany({
+                        data: studentTrips
+                    });
+                }
             }
         }
 

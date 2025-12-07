@@ -348,6 +348,23 @@ const schoolService = {
     return handleApiCall(() => axiosInstance.get(`/routes/${id}`));
   },
 
+  // ==================== STOPS ====================
+  getAllStops: async () => {
+    return handleApiCall(() => axiosInstance.get("/stops"));
+  },
+
+  createStop: async (stopData) => {
+    return handleApiCall(() => axiosInstance.post("/stops", stopData));
+  },
+
+  updateStop: async (id, stopData) => {
+    return handleApiCall(() => axiosInstance.put(`/stops/${id}`, stopData));
+  },
+
+  deleteStop: async (id) => {
+    return handleApiCall(() => axiosInstance.delete(`/stops/${id}`));
+  },
+
   addStopToRoute: async (routeId, stopData) => {
     return handleApiCall(() => axiosInstance.post(`/routes/${routeId}/stops`, stopData));
   },

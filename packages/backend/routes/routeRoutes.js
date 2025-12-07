@@ -11,6 +11,8 @@ router.get('/:routeId/stops', routeController.getRouteStops);
 
 // Chỉ school mới được thêm/sửa/xóa
 router.post('/', authorize('school'), routeController.createRoute);
+router.put('/:id', authorize('school'), routeController.updateRoute);
+router.delete('/:id', authorize('school'), routeController.deleteRoute);
 router.post('/:routeId/stops', authorize('school'), routeController.addStopToRoute);
 
 module.exports = router;

@@ -22,6 +22,7 @@ import DriverSettings from './pages/driver/Settings';
 import DriverRoutes from './pages/driver/Routes';
 import DriverBustatus from './pages/driver/BusStatus';
 import DriverNotifications from './pages/driver/Notifications';
+import TripActive from './pages/driver/TripActive';
 
 // school pages and layout
 import SchoolPortalLayout from "./components/school/SchoolPortalLayout";
@@ -30,6 +31,8 @@ import SchoolStudents from "./pages/school/Students";
 import SchoolDrivers from "./pages/school/Drivers";
 import SchoolBuses from "./pages/school/Buses";
 import SchoolRoutes from "./pages/school/Routes";
+import SchoolStops from "./pages/school/Stops";
+import SchoolSchedules from "./pages/school/Schedules";
 import SchoolTracking from "./pages/school/Tracking";
 import SchoolNotifications from "./pages/school/Notifications";
 import SchoolAddRoute from "./pages/school/AddRoute";
@@ -210,6 +213,7 @@ function App() {
             <Route path="routes" element={<DriverRoutes />} />
             <Route path="notifications" element={<DriverNotifications />} />
             <Route path="bus-status" element={<DriverBustatus />} />
+            <Route path="trips/active" element={<TripActive />} />
             {/* Thêm các route khác nếu cần */}
           </Route>
 
@@ -234,6 +238,8 @@ function App() {
             <Route path="buses/add" element={<AddBus />} />
             <Route path="buses/:id/edit" element={<EditBus />} />
             <Route path="routes" element={<SchoolRoutes />} />
+            <Route path="stops" element={<SchoolStops />} />
+            <Route path="schedules" element={<SchoolSchedules />} />
             <Route path="add-route" element={<SchoolAddRoute />} />
             <Route path="tracking" element={<SchoolTracking />} />
             <Route path="notifications" element={<SchoolNotifications />} />

@@ -66,6 +66,10 @@ const locationService = {
             const response = await axiosInstance.get(`/buses/${busId}`);
             return response.data;
         } catch (error) {
+            // Nếu 404 (chưa có vị trí), trả về null thay vì throw lỗi
+            if (error.response && error.response.status === 404) {
+                return { success: true, data: null };
+            }
             console.error("Get bus location by ID error:", error);
             throw error;
         }

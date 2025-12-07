@@ -3,6 +3,9 @@ const router = express.Router();
 const locationController = require('../controllers/locationController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
+// Public route for Simulator/Hardware (Bypass Auth)
+router.post('/update/:busId', locationController.updateBusLocation);
+
 router.use(protect);
 
 router.get('/buses', locationController.getAllBusLocations);

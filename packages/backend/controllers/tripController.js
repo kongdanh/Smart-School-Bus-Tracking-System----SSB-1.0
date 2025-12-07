@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const simulationService = require('../services/simulationService');
 
 // Bắt đầu chuyến xe (Tương ứng hành động Check-in Vào Ca)
 exports.startTrip = async (req, res) => {
@@ -34,6 +35,9 @@ exports.startTrip = async (req, res) => {
             where: { lichTrinhId: parseInt(lichTrinhId) },
             data: { trangThai: 'in_progress' }
         });
+
+        // Start Simulation
+        simulationService.startSimulation(parseInt(lichTrinhId));
 
         res.json({ success: true, data: tripRecord });
 
@@ -86,6 +90,9 @@ exports.endTrip = async (req, res) => {
             where: { lichTrinhId: tripRecord.lichTrinhId },
             data: { trangThai: 'completed' }
         });
+
+        // Stop Simulation
+        simulationService.stopSimulation(tripRecord.lichTrinhId);
 
         // ✅ CLEAR ATTENDANCE STATUS: Reset lại trạng thái của tất cả học sinh để chuẩn bị cho chuyến tiếp theo
         await prisma.attendance.updateMany({

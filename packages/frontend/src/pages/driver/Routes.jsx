@@ -7,6 +7,8 @@ import 'leaflet/dist/leaflet.css';
 import "../../styles/driver-styles/driver-routes.css";
 import tripService from "../../services/tripService";
 import locationService from "../../services/locationService";
+import socketService from "../../services/socket";
+import attendanceService from "../../services/attendanceService";
 
 // --- CONFIG ICONS ---
 delete L.Icon.Default.prototype._getIconUrl;
@@ -116,18 +118,25 @@ export default function RoutesPage() {
 
                 setCurrentTrip(trip);
 
-                // --- SETUP MẶC ĐỊNH CHO TÀI XẾ 1 (TUYẾN 1) ---
-                // Dữ liệu này khớp với bảng diemdung trong SQL
-                const stops = [
-                    { id: 1, tenDiemDung: "Trường THPT Chuyên Lê Hồng Phong (Q5)", lat: 10.762622, lng: 106.682228, diaChi: "235 Nguyễn Văn Cừ" },
-                    { id: 2, tenDiemDung: "Chợ Bến Thành (Q1)", lat: 10.772542, lng: 106.698021, diaChi: "Đường Lê Lợi" },
-                    { id: 3, tenDiemDung: "Nhà Thờ Đức Bà (Q1)", lat: 10.779785, lng: 106.699018, diaChi: "Công xã Paris" },
-                    { id: 4, tenDiemDung: "Thảo Cầm Viên (Q1)", lat: 10.787602, lng: 106.705139, diaChi: "2 Nguyễn Bỉnh Khiêm" },
-                    { id: 5, tenDiemDung: "Landmark 81 (Bình Thạnh)", lat: 10.794939, lng: 106.721773, diaChi: "720A Điện Biên Phủ" }
-                ];
+                // --- SETUP STOPS FROM TRIP DATA ---
+                if (trip.tuyenduong && trip.tuyenduong.tuyenduong_diemdung) {
+                    const stops = trip.tuyenduong.tuyenduong_diemdung.map(td => ({
+                        id: td.diemdung.diemDungId,
+                        tenDiemDung: td.diemdung.tenDiemDung,
+                        lat: parseFloat(td.diemdung.vido),
+                        lng: parseFloat(td.diemdung.kinhdo),
+                        diaChi: td.diemdung.diaChi
+                    }));
+                    setRouteStops(stops);
 
-                setRouteStops(stops);
-                startPolling(trip);
+                    // Initialize bus location at first stop if not available
+                    if (stops.length > 0) {
+                        setBusData(prev => prev || {
+                            lat: stops[0].lat,
+                            lng: stops[0].lng
+                        });
+                    }
+                }
 
             } catch (err) {
                 console.error("❌ Error:", err);
@@ -139,6 +148,34 @@ export default function RoutesPage() {
         loadTrip();
     }, [navigate]);
 
+    // --- SOCKET.IO REAL-TIME UPDATES ---
+    useEffect(() => {
+        if (!currentTrip?.lichTrinhId) return;
+
+        const socket = socketService.getSocket();
+
+        // Join trip room
+        socket.emit('join_room', `trip_${currentTrip.lichTrinhId}`);
+
+        // Listeners
+        const handleLocationUpdate = (data) => {
+            if (data.lat && data.lng) {
+                setBusData({
+                    lat: parseFloat(data.lat),
+                    lng: parseFloat(data.lng)
+                });
+            }
+        };
+
+        socket.on('BUS_LOCATION_UPDATE', handleLocationUpdate);
+
+        return () => {
+            socket.off('BUS_LOCATION_UPDATE', handleLocationUpdate);
+            socket.emit('leave_room', `trip_${currentTrip.lichTrinhId}`);
+        };
+    }, [currentTrip?.lichTrinhId]);
+
+    /* REMOVED POLLING FUNCTION
     // --- POLLING BUS & OSRM ---
     const startPolling = (trip) => {
         // Poll bus location
@@ -159,6 +196,7 @@ export default function RoutesPage() {
 
         return () => clearInterval(locInterval);
     };
+    */
 
     // --- FETCH OSRM WHEN STOPS LOADED ---
     useEffect(() => {
@@ -224,8 +262,9 @@ export default function RoutesPage() {
         try {
             const res = await attendanceService.markPickup(currentTrip.lichTrinhId, student.hocSinhId);
             if (res.success) {
+                // Cập nhật state ngay lập tức
                 setStopStudents(prev => prev.map(s =>
-                    s.hocSinhId === student.hocSinhId ? { ...s, attendance: res.data } : s
+                    s.hocSinhId === student.hocSinhId ? { ...s, attendance: { ...s.attendance, loanDon: true, thoiGianDon: new Date().toISOString() } } : s
                 ));
             }
         } catch (err) {

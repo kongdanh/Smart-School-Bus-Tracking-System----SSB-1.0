@@ -3,6 +3,7 @@
 // ============================================
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const socket = require('../socket'); // Import socket
 
 // Lấy vị trí tất cả xe buýt
 exports.getAllBusLocations = async (req, res) => {
@@ -113,6 +114,48 @@ exports.updateBusLocation = async (req, res) => {
                 xebuyt: true
             }
         });
+
+        // --- EMIT SOCKET EVENT ---
+        try {
+            const io = socket.getIO();
+
+            // 1. Find active schedule for this bus to emit to trip room
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const activeSchedule = await prisma.lichtrinh.findFirst({
+                where: {
+                    xeBuytId: parseInt(busId),
+                    ngay: {
+                        gte: today,
+                        lt: tomorrow
+                    }
+                    // You might want to check time range too, but for now this is enough
+                }
+            });
+
+            const updateData = {
+                lat: parseFloat(vido),
+                lng: parseFloat(kinhdo),
+                busId: parseInt(busId),
+                timestamp: new Date()
+            };
+
+            // Emit to specific trip room if found
+            if (activeSchedule) {
+                io.to(`trip_${activeSchedule.lichTrinhId}`).emit('BUS_LOCATION_UPDATE', updateData);
+                console.log(`📍 Emitted location to trip_${activeSchedule.lichTrinhId}`);
+            }
+
+            // Also emit to a generic bus room (optional, but good for fallback)
+            io.emit('BUS_LOCATION_UPDATE', updateData); // Broadcast to all for now (simplest for debugging)
+
+        } catch (err) {
+            console.error("Socket emit error:", err);
+        }
+        // -------------------------
 
         res.json({
             success: true,

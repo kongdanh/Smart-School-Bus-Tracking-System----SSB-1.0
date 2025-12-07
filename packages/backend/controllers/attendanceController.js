@@ -1,6 +1,7 @@
 // backend/controllers/attendanceController.js
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const notificationService = require('../services/notificationService');
 
 // Lấy danh sách học sinh cần điểm danh theo lịch trình
 exports.getStudentsBySchedule = async (req, res) => {
@@ -119,21 +120,18 @@ exports.markPickup = async (req, res) => {
         // ============================================================
         const studentInfo = await prisma.hocsinh.findUnique({
             where: { hocSinhId: parseInt(hocSinhId) },
-            select: { hoTen: true, phuHuynhId: true }
+            include: { phuhuynh: true }
         });
 
-        if (studentInfo && studentInfo.phuHuynhId) {
+        if (studentInfo && studentInfo.phuhuynh && studentInfo.phuhuynh.userId) {
             const timeString = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-            await prisma.thongbao.create({
-                data: {
-                    phuHuynhId: studentInfo.phuHuynhId,
-                    loai: 'pickup', // Khớp với switch case ở Frontend
-                    noiDung: `Học sinh ${studentInfo.hoTen} đã được đón lên xe lúc ${timeString}.`,
-                    thoiGianGui: new Date(),
-                    daDoc: false
-                }
-            });
-            console.log(`🔔 Notification created for Parent ID: ${studentInfo.phuHuynhId}`);
+            await notificationService.sendNotification(
+                studentInfo.phuhuynh.userId,
+                'Học sinh lên xe',
+                `Học sinh ${studentInfo.hoTen} đã được đón lên xe lúc ${timeString}.`,
+                'pickup'
+            );
+            console.log(`🔔 Notification sent to Parent User ID: ${studentInfo.phuhuynh.userId}`);
         }
         // ============================================================
 
@@ -186,7 +184,21 @@ exports.markDropoff = async (req, res) => {
             data: { trangThai: 'completed' }
         });
 
-        // (Option) Có thể thêm tạo thông báo "Đã trả học sinh" tại đây tương tự markPickup
+        // Gửi thông báo trả học sinh
+        const studentInfo = await prisma.hocsinh.findUnique({
+            where: { hocSinhId: parseInt(hocSinhId) },
+            include: { phuhuynh: true }
+        });
+
+        if (studentInfo && studentInfo.phuhuynh && studentInfo.phuhuynh.userId) {
+            const timeString = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            await notificationService.sendNotification(
+                studentInfo.phuhuynh.userId,
+                'Học sinh xuống xe',
+                `Học sinh ${studentInfo.hoTen} đã xuống xe an toàn lúc ${timeString}.`,
+                'dropoff'
+            );
+        }
 
         res.json({ success: true, data: attendance });
 

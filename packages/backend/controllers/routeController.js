@@ -106,10 +106,10 @@ exports.getRouteById = async (req, res) => {
     }
 };
 
-// Tạo tuyến mới
+// Tạo tuyến mới (kèm điểm dừng)
 exports.createRoute = async (req, res) => {
     try {
-        const { maTuyen, tenTuyen } = req.body;
+        const { maTuyen, tenTuyen, stops } = req.body;
 
         if (!maTuyen) {
             return res.status(400).json({
@@ -129,23 +129,70 @@ exports.createRoute = async (req, res) => {
             });
         }
 
-        const route = await prisma.tuyenduong.create({
-            data: {
-                maTuyen,
-                tenTuyen
+        // Sử dụng transaction để tạo tuyến và điểm dừng cùng lúc
+        const route = await prisma.$transaction(async (tx) => {
+            // 1. Tạo tuyến đường
+            const newRoute = await tx.tuyenduong.create({
+                data: {
+                    maTuyen,
+                    tenTuyen
+                }
+            });
+
+            // 2. Tạo điểm dừng nếu có
+            if (stops && Array.isArray(stops) && stops.length > 0) {
+                for (let i = 0; i < stops.length; i++) {
+                    const stop = stops[i];
+                    let stopId = stop.diemDungId;
+
+                    // Nếu chưa có ID, tạo điểm dừng mới
+                    if (!stopId) {
+                        const newStop = await tx.diemdung.create({
+                            data: {
+                                tenDiemDung: stop.tenDiemDung || `Điểm dừng ${i + 1}`,
+                                diaChi: stop.diaChi || null,
+                                vido: stop.vido ? parseFloat(stop.vido) : null,
+                                kinhdo: stop.kinhdo ? parseFloat(stop.kinhdo) : null
+                            }
+                        });
+                        stopId = newStop.diemDungId;
+                    }
+
+                    // Liên kết điểm dừng vào tuyến
+                    await tx.tuyenduong_diemdung.create({
+                        data: {
+                            tuyenDuongId: newRoute.tuyenDuongId,
+                            diemDungId: stopId,
+                            thuTu: i + 1
+                        }
+                    });
+                }
+            }
+
+            return newRoute;
+        });
+
+        // Fetch lại đầy đủ thông tin để trả về
+        const fullRoute = await prisma.tuyenduong.findUnique({
+            where: { tuyenDuongId: route.tuyenDuongId },
+            include: {
+                tuyenduong_diemdung: {
+                    include: { diemdung: true },
+                    orderBy: { thuTu: 'asc' }
+                }
             }
         });
 
         res.status(201).json({
             success: true,
             message: 'Thêm tuyến thành công',
-            data: route
+            data: fullRoute
         });
     } catch (error) {
         console.error('Create route error:', error);
         res.status(500).json({
             success: false,
-            message: 'Lỗi khi thêm tuyến'
+            message: 'Lỗi khi thêm tuyến: ' + error.message
         });
     }
 };
@@ -229,6 +276,110 @@ exports.addStopToRoute = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Lỗi khi thêm điểm dừng'
+        });
+    }
+};
+
+// Cập nhật tuyến đường
+exports.updateRoute = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { maTuyen, tenTuyen, stops } = req.body;
+
+        // Transaction để update tuyến và điểm dừng
+        const updatedRoute = await prisma.$transaction(async (tx) => {
+            // 1. Update thông tin cơ bản
+            const route = await tx.tuyenduong.update({
+                where: { tuyenDuongId: parseInt(id) },
+                data: {
+                    maTuyen,
+                    tenTuyen
+                }
+            });
+
+            // 2. Nếu có danh sách stops mới, cập nhật lại toàn bộ điểm dừng
+            if (stops && Array.isArray(stops)) {
+                // Xóa các liên kết cũ
+                await tx.tuyenduong_diemdung.deleteMany({
+                    where: { tuyenDuongId: parseInt(id) }
+                });
+
+                // Tạo lại liên kết mới
+                for (let i = 0; i < stops.length; i++) {
+                    const stop = stops[i];
+                    let stopId = stop.diemDungId;
+
+                    // Nếu là điểm dừng mới (chưa có ID hoặc ID tạm)
+                    if (!stopId || stopId < 0) {
+                        const newStop = await tx.diemdung.create({
+                            data: {
+                                tenDiemDung: stop.tenDiemDung || `Điểm dừng ${i + 1}`,
+                                diaChi: stop.diaChi || null,
+                                vido: stop.vido ? parseFloat(stop.vido) : null,
+                                kinhdo: stop.kinhdo ? parseFloat(stop.kinhdo) : null
+                            }
+                        });
+                        stopId = newStop.diemDungId;
+                    } else {
+                        // Nếu là điểm dừng cũ, có thể update thông tin nếu cần
+                        // Ở đây ta giả sử chỉ update vị trí nếu có thay đổi
+                        await tx.diemdung.update({
+                            where: { diemDungId: parseInt(stopId) },
+                            data: {
+                                tenDiemDung: stop.tenDiemDung,
+                                diaChi: stop.diaChi,
+                                vido: stop.vido ? parseFloat(stop.vido) : null,
+                                kinhdo: stop.kinhdo ? parseFloat(stop.kinhdo) : null
+                            }
+                        });
+                    }
+
+                    // Tạo liên kết
+                    await tx.tuyenduong_diemdung.create({
+                        data: {
+                            tuyenDuongId: parseInt(id),
+                            diemDungId: parseInt(stopId),
+                            thuTu: i + 1
+                        }
+                    });
+                }
+            }
+
+            return route;
+        });
+
+        res.json({
+            success: true,
+            message: 'Cập nhật tuyến đường thành công',
+            data: updatedRoute
+        });
+    } catch (error) {
+        console.error('Update route error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi cập nhật tuyến đường'
+        });
+    }
+};
+
+// Xóa tuyến đường
+exports.deleteRoute = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await prisma.tuyenduong.delete({
+            where: { tuyenDuongId: parseInt(id) }
+        });
+
+        res.json({
+            success: true,
+            message: 'Xóa tuyến đường thành công'
+        });
+    } catch (error) {
+        console.error('Delete route error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi xóa tuyến đường'
         });
     }
 };

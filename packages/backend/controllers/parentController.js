@@ -62,7 +62,8 @@ exports.getChildBusLocation = async (req, res) => {
   try {
     const { hocSinhId } = req.params;
 
-    console.log("🔍 [Backend] Getting location for student:", hocSinhId);
+    // GIẢM LOG: Comment lại log này để tránh spam console server
+    // console.log("🔍 [Backend] Getting location for student:", hocSinhId);
 
     if (!hocSinhId || hocSinhId === 'undefined') {
       return res.status(400).json({ success: false, message: "Invalid student ID" });
@@ -97,7 +98,8 @@ exports.getChildBusLocation = async (req, res) => {
       }
     });
 
-    console.log("🔍 [Backend] Active trip found:", !!activeTrip);
+    // GIẢM LOG: Comment lại log này
+    // console.log("🔍 [Backend] Active trip found:", !!activeTrip);
 
     if (!activeTrip) {
       return res.json({
@@ -143,6 +145,7 @@ exports.getChildBusLocation = async (req, res) => {
     // console.log(`✅ [Backend] Valid route points: ${routePoints.length}`);
 
     const responseData = {
+      scheduleId: activeTrip.lichtrinh.lichTrinhId,
       lat: location?.vido || 10.7769,
       lng: location?.kinhdo || 106.7009,
       updatedAt: location?.thoiGian || new Date(),

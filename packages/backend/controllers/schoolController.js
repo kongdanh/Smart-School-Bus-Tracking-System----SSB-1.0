@@ -798,12 +798,12 @@ exports.getRouteById = async (req, res) => {
 
 exports.createRoute = async (req, res) => {
   try {
-    const { maTuyen, tenTuyen } = req.body;
+    const { maTuyen, tenTuyen, stops } = req.body;
 
-    if (!maTuyen || !tenTuyen) {
+    if (!maTuyen) {
       return res.status(400).json({
         success: false,
-        message: 'Mã tuyến và tên tuyến là bắt buộc'
+        message: 'Mã tuyến là bắt buộc'
       });
     }
 
@@ -818,12 +818,43 @@ exports.createRoute = async (req, res) => {
       });
     }
 
-    const route = await prisma.tuyenduong.create({
-      data: {
-        maTuyen,
-        tenTuyen,
-        trangThai: 'active'
+    // Transaction để tạo tuyến và điểm dừng
+    const route = await prisma.$transaction(async (tx) => {
+      const newRoute = await tx.tuyenduong.create({
+        data: {
+          maTuyen,
+          tenTuyen,
+          trangThai: 'active'
+        }
+      });
+
+      if (stops && Array.isArray(stops) && stops.length > 0) {
+        for (let i = 0; i < stops.length; i++) {
+          const stop = stops[i];
+          let stopId = stop.diemDungId;
+
+          if (!stopId) {
+            const newStop = await tx.diemdung.create({
+              data: {
+                tenDiemDung: stop.tenDiemDung || `Điểm dừng ${i + 1}`,
+                diaChi: stop.diaChi || null,
+                vido: stop.vido ? parseFloat(stop.vido) : null,
+                kinhdo: stop.kinhdo ? parseFloat(stop.kinhdo) : null
+              }
+            });
+            stopId = newStop.diemDungId;
+          }
+
+          await tx.tuyenduong_diemdung.create({
+            data: {
+              tuyenDuongId: newRoute.tuyenDuongId,
+              diemDungId: stopId,
+              thuTu: i + 1
+            }
+          });
+        }
       }
+      return newRoute;
     });
 
     res.status(201).json({
@@ -837,6 +868,85 @@ exports.createRoute = async (req, res) => {
       success: false,
       message: 'Lỗi khi tạo tuyến'
     });
+  }
+};
+
+exports.updateRoute = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { maTuyen, tenTuyen, stops } = req.body;
+
+    const updatedRoute = await prisma.$transaction(async (tx) => {
+      const route = await tx.tuyenduong.update({
+        where: { tuyenDuongId: parseInt(id) },
+        data: { maTuyen, tenTuyen }
+      });
+
+      if (stops && Array.isArray(stops)) {
+        await tx.tuyenduong_diemdung.deleteMany({
+          where: { tuyenDuongId: parseInt(id) }
+        });
+
+        for (let i = 0; i < stops.length; i++) {
+          const stop = stops[i];
+          let stopId = stop.diemDungId;
+
+          if (!stopId || stopId < 0) {
+            const newStop = await tx.diemdung.create({
+              data: {
+                tenDiemDung: stop.tenDiemDung || `Điểm dừng ${i + 1}`,
+                diaChi: stop.diaChi || null,
+                vido: stop.vido ? parseFloat(stop.vido) : null,
+                kinhdo: stop.kinhdo ? parseFloat(stop.kinhdo) : null
+              }
+            });
+            stopId = newStop.diemDungId;
+          } else {
+            await tx.diemdung.update({
+              where: { diemDungId: parseInt(stopId) },
+              data: {
+                tenDiemDung: stop.tenDiemDung,
+                diaChi: stop.diaChi,
+                vido: stop.vido ? parseFloat(stop.vido) : null,
+                kinhdo: stop.kinhdo ? parseFloat(stop.kinhdo) : null
+              }
+            });
+          }
+
+          await tx.tuyenduong_diemdung.create({
+            data: {
+              tuyenDuongId: parseInt(id),
+              diemDungId: parseInt(stopId),
+              thuTu: i + 1
+            }
+          });
+        }
+      }
+      return route;
+    });
+
+    res.json({
+      success: true,
+      message: 'Cập nhật tuyến thành công',
+      data: updatedRoute
+    });
+  } catch (error) {
+    console.error('Update route error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi cập nhật tuyến'
+    });
+  }
+};
+
+exports.deleteRoute = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.tuyenduong.delete({ where: { tuyenDuongId: parseInt(id) } });
+    res.json({ success: true, message: 'Xóa tuyến thành công' });
+  } catch (error) {
+    console.error('Delete route error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khi xóa tuyến' });
   }
 };
 

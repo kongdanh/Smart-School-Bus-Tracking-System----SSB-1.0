@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import parentService from '../../services/parentService';
+import socketService from '../../services/socket';
 import TrackingMap from './TrackingMap';
 import '../../styles/parent-styles/parent-tracking.css';
 
@@ -15,62 +17,73 @@ const Tracking = () => {
     const [polyLineCoords, setPolyLineCoords] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // --- HÀM HELPER: XÁC ĐỊNH TRẠNG THÁI DỰA VÀO loanDon, loanTra ---
+    // --- HÀM HELPER: XÁC ĐỊNH TRẠNG THÁI DỰA VÀO status TỪ BACKEND ---
     const getStudentStatus = (student) => {
-        // 1. Nếu không có object attendance => Hôm nay không có lịch
-        if (!student.attendance) {
-            return {
-                label: "Chưa có lịch",
-                className: "status-no-schedule",
-                icon: "📅",
-                color: "#6c757d"
-            };
+        // Sử dụng field 'status' từ API (giống Dashboard)
+        const status = student.status || 'home';
+
+        switch (status) {
+            case 'arrived':
+                return {
+                    label: "Đã đến nơi",
+                    className: "status-arrived",
+                    icon: "✓",
+                    color: "#16a34a"
+                };
+            case 'on-bus':
+                return {
+                    label: "Đang trên xe",
+                    className: "status-on-bus",
+                    icon: "🚌",
+                    color: "#0ea5e9"
+                };
+            case 'waiting':
+                return {
+                    label: "Đang chờ",
+                    className: "status-waiting",
+                    icon: "⏳",
+                    color: "#eab308"
+                };
+            default:
+                return {
+                    label: "Chưa có lịch",
+                    className: "status-no-schedule",
+                    icon: "📅",
+                    color: "#6c757d"
+                };
         }
-
-        const { loanDon, loanTra } = student.attendance;
-
-        // 2. Ưu tiên 1: Đã trả học sinh (loanTra = true) => Về đến nơi
-        if (loanTra) {
-            return {
-                label: "Đã đến nơi",
-                className: "status-arrived",
-                icon: "✓",
-                color: "#16a34a"
-            };
-        }
-
-        // 3. Ưu tiên 2: Đã đón nhưng chưa trả (loanDon = true, loanTra = false) => Đang trên xe
-        if (loanDon && !loanTra) {
-            return {
-                label: "Đang trên xe",
-                className: "status-on-bus",
-                icon: "🚌",
-                color: "#0ea5e9"
-            };
-        }
-
-        // 4. Còn lại: Có lịch nhưng chưa đón (loanDon = false) => Đang chờ
-        return {
-            label: "Đang chờ",
-            className: "status-waiting",
-            icon: "⏳",
-            color: "#eab308"
-        };
     };
 
-    // --- 1. LOAD DANH SÁCH HỌC SINH ---
+    // --- HÀM HELPER: TÍNH ETA ---
+    const calculateETA = (busLat, busLng, stopLat, stopLng) => {
+        if (!busLat || !busLng || !stopLat || !stopLng) return null;
+
+        // Haversine formula for distance
+        const R = 6371; // Radius of the earth in km
+        const dLat = (stopLat - busLat) * (Math.PI / 180);
+        const dLon = (stopLng - busLng) * (Math.PI / 180);
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(busLat * (Math.PI / 180)) * Math.cos(stopLat * (Math.PI / 180)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distanceKm = R * c;
+
+        // Assume average speed 30 km/h
+        const speedKmh = 30;
+        const timeHours = distanceKm / speedKmh;
+        const timeMinutes = Math.ceil(timeHours * 60);
+
+        return timeMinutes;
+    };
+
+    // --- 1. LOAD DANH SÁCH HỌC SINH & POLLING ---
     useEffect(() => {
-        const init = async () => {
+        const fetchStudents = async () => {
             try {
                 const res = await parentService.getMyChildren();
                 if (res.success) {
                     setStudents(res.data);
-
-                    // Nếu có ID truyền từ trang khác sang thì chọn luôn học sinh đó
-                    if (location.state?.studentId) {
-                        const target = res.data.find(s => s.id === location.state.studentId);
-                        if (target) setSelectedStudent(target);
-                    }
                 }
             } catch (error) {
                 console.error("Lỗi load học sinh:", error);
@@ -78,10 +91,40 @@ const Tracking = () => {
                 setLoading(false);
             }
         };
-        init();
-    }, [location.state]);
 
-    // --- 2. POLLING VỊ TRÍ XE (3 giây/lần) & CẬP NHẬT TRẠNG THÁI ---
+        fetchStudents();
+        const interval = setInterval(fetchStudents, 5000); // Poll every 5s
+        return () => clearInterval(interval);
+    }, []);
+
+    // --- 1.1 UPDATE SELECTED STUDENT & HANDLE NAVIGATION STATE ---
+    useEffect(() => {
+        if (students.length === 0) return;
+
+        // Case 1: Initial navigation from Dashboard
+        if (!selectedStudent && location.state?.studentId) {
+            const target = students.find(s => s.id === location.state.studentId);
+            if (target) setSelectedStudent(target);
+        }
+
+        // Case 2: Update currently selected student with new data
+        if (selectedStudent) {
+            const updated = students.find(s => s.id === selectedStudent.id);
+            if (updated) {
+                // Check if critical fields changed to avoid infinite loops
+                const hasChanged =
+                    updated.status !== selectedStudent.status ||
+                    updated.diemDon !== selectedStudent.diemDon ||
+                    updated.busPlate !== selectedStudent.busPlate;
+
+                if (hasChanged) {
+                    setSelectedStudent(prev => ({ ...prev, ...updated }));
+                }
+            }
+        }
+    }, [students, location.state]); // Removed selectedStudent from deps to avoid loop, relying on students update to trigger check
+
+    // --- 2. POLLING VỊ TRÍ XE (Chỉ chạy 1 lần đầu để lấy dữ liệu ban đầu) ---
     useEffect(() => {
         if (!selectedStudent) return;
 
@@ -101,17 +144,9 @@ const Tracking = () => {
                         lat: busLat,
                         lng: busLng,
                         updatedAt: actualData.updatedAt || new Date().toISOString(),
-                        busInfo: actualData.busInfo || {}
+                        busInfo: actualData.busInfo || {},
+                        scheduleId: actualData.scheduleId
                     });
-                }
-
-                // Cập nhật danh sách học sinh để lấy status loanDon/loanTra mới nhất
-                const childrenRes = await parentService.getMyChildren();
-                if (childrenRes.success) {
-                    const updated = childrenRes.data.find(s => s.id === selectedStudent.id);
-                    if (updated) {
-                        setSelectedStudent(updated);
-                    }
                 }
 
                 // Cập nhật các điểm dừng (Route Points) - Chỉ làm 1 lần nếu chưa có
@@ -132,9 +167,48 @@ const Tracking = () => {
         };
 
         fetchData();
-        const interval = setInterval(fetchData, 3000);
+        // KHÔNG POLLING LIÊN TỤC NỮA VÌ ĐÃ CÓ SOCKET
+        // Nếu muốn fallback, hãy đặt interval rất dài (ví dụ 30s)
+        const interval = setInterval(fetchData, 30000);
         return () => clearInterval(interval);
-    }, [selectedStudent, routePoints]);
+    }, [selectedStudent?.id]); // Chỉ chạy lại khi ID học sinh thay đổi, không phải toàn bộ object
+
+    // --- SOCKET.IO REAL-TIME UPDATES ---
+    useEffect(() => {
+        if (!busData?.scheduleId) return;
+
+        const socket = socketService.getSocket();
+
+        // Join trip room (Backend expects 'join_trip_room' with ID)
+        socket.emit('join_trip_room', busData.scheduleId);
+
+        // Listeners
+        const handleLocationUpdate = (data) => {
+            if (data.lat && data.lng) {
+                setBusData(prev => ({
+                    ...prev,
+                    lat: data.lat,
+                    lng: data.lng,
+                    updatedAt: new Date().toISOString()
+                }));
+            }
+        };
+
+        const handleNotification = (data) => {
+            // Notifications are handled globally in ParentPortal now, 
+            // but we can keep this if we want specific trip alerts
+            // toast.info(data.message);
+        };
+
+        socket.on('BUS_LOCATION_UPDATE', handleLocationUpdate);
+        // socket.on('NEW_NOTIFICATION', handleNotification);
+
+        return () => {
+            socket.off('BUS_LOCATION_UPDATE', handleLocationUpdate);
+            // socket.off('NEW_NOTIFICATION', handleNotification);
+            // socket.emit('leave_room', `trip_${busData.scheduleId}`); // Backend might not support leave_room yet
+        };
+    }, [busData?.scheduleId]);
 
     // --- 3. VẼ ĐƯỜNG ĐI (OSRM) - THÊM TRƯỜNG HỌC LÀM ĐIỂM CUỐI ---
     useEffect(() => {
@@ -240,6 +314,25 @@ const Tracking = () => {
                                 {statusInfo.label}
                             </span>
                         </div>
+                        {statusInfo.label === 'Đang chờ' && busData && selectedStudent && (
+                            <div className="info-item">
+                                <span className="info-label">Dự kiến đến:</span>
+                                <span className="info-value highlight" style={{ color: '#eab308' }}>
+                                    {(() => {
+                                        // Tìm tọa độ điểm đón của học sinh trong routePoints
+                                        // Giả sử tên điểm đón khớp với tên trạm
+                                        const pickupPointName = selectedStudent.diemDon || selectedStudent.pickupPoint;
+                                        const stop = routePoints.find(p => p.name === pickupPointName) || routePoints[0]; // Fallback điểm đầu
+
+                                        if (stop) {
+                                            const minutes = calculateETA(busData.lat, busData.lng, stop.lat, stop.lng);
+                                            return minutes ? `${minutes} phút` : 'Đang tính...';
+                                        }
+                                        return 'Đang tính...';
+                                    })()}
+                                </span>
+                            </div>
+                        )}
                         <div className="info-item">
                             <span className="info-label">Cập nhật:</span>
                             <span className="info-value" style={{ color: '#16a34a' }}>

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const schoolController = require('../controllers/schoolController');
+const stopController = require('../controllers/stopController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Áp dụng middleware cho tất cả routes
@@ -32,9 +33,16 @@ router.delete('/buses/:id', schoolController.deleteBus);
 router.get('/routes', schoolController.getAllRoutes);
 router.post('/routes', schoolController.createRoute);
 router.get('/routes/:id', schoolController.getRouteById);
+router.put('/routes/:id', schoolController.updateRoute);
+router.delete('/routes/:id', schoolController.deleteRoute);
 router.post('/routes/:routeId/stops', schoolController.addStopToRoute);
 router.get('/routes/:routeId/stops', schoolController.getRouteStops);
-router.get('/stops', schoolController.getAllStops); // New route for fetching all stops
+
+// ==================== ĐIỂM DỪNG (STOPS) ====================
+router.get('/stops', stopController.getAllStops);
+router.post('/stops', stopController.createStop);
+router.put('/stops/:id', stopController.updateStop);
+router.delete('/stops/:id', stopController.deleteStop);
 
 // ==================== LỊCH TRÌNH ====================
 router.get('/schedules', schoolController.getAllSchedules);

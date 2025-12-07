@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import Sidebar from '../../components/parent/Sidebar';
 import authService from '../../services/authService';
+import socketService from '../../services/socket';
 import '../../styles/parent-styles/parent-portal.css';
 
 const ParentPortal = () => {
@@ -14,6 +16,29 @@ const ParentPortal = () => {
         const currentUser = authService.getCurrentUser();
         setUser(currentUser);
 
+        // --- SOCKET CONNECTION FOR NOTIFICATIONS ---
+        if (currentUser && currentUser.id) {
+            const socket = socketService.getSocket();
+
+            // Join user room for notifications
+            socket.emit('join_user_room', currentUser.id);
+
+            const handleNotification = (data) => {
+                console.log("🔔 New Notification:", data);
+                toast.info(data.message || "Bạn có thông báo mới");
+                setNotificationCount(prev => prev + 1);
+            };
+
+            socket.on('NEW_NOTIFICATION', handleNotification);
+
+            return () => {
+                socket.off('NEW_NOTIFICATION', handleNotification);
+                // Don't disconnect socket here as it might be used by child components
+            };
+        }
+    }, []);
+
+    useEffect(() => {
         // Load theme preference
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme) {

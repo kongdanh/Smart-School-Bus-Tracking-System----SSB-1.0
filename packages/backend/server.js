@@ -30,6 +30,7 @@ const locationRoutes = require('./routes/locationRoutes');
 const routeRoutes = require('./routes/routeRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const stopRoutes = require('./routes/stopRoutes');
 
 // Routes mới (thêm vào)
 const attendanceRoutes = require('./routes/attendanceRoutes');
@@ -107,13 +108,21 @@ try {
 }
 
 // ============ START SERVER ============
-app.listen(PORT, () => {
+const http = require('http');
+const server = http.createServer(app);
+const socket = require('./socket');
+
+// Init Socket.io
+socket.init(server);
+
+server.listen(PORT, () => {
   console.log(`
 
    🚌 SMART SCHOOL BUS TRACKING API 
-   🚀 Server running on http://localhost:${PORT.padEnd(4)} 
+   🚀 Server running on http://localhost:${PORT} 
    🌍 Mode: ${process.env.NODE_ENV || 'development'} 
    ⏰ Started: ${new Date().toLocaleString('vi-VN')} 
+   📡 Socket.io initialized
 
   `.trim());
 });
